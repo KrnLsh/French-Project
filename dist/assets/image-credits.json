@@ -1,0 +1,81 @@
+[
+  {
+    "slug": "stray",
+    "title": "Stray",
+    "url": "https://store.steampowered.com/app/1332010/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1332010/ss_88e209a90c2039fa76bca6fa08c641365be38d50.1920x1080.jpg?t=1785424330",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "plague-tale",
+    "title": "A Plague Tale: Innocence",
+    "url": "https://store.steampowered.com/app/752590/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/752590/ss_8775c109d7303faf8aa94c532905107b75064d48.1920x1080.jpg?t=1784712345",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "dead-cells",
+    "title": "Dead Cells",
+    "url": "https://store.steampowered.com/app/588650/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/588650/ss_ac28000ade40cc2fe5c128f32ac98ba33c008a7a.1920x1080.jpg?t=1779086887",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "clair-obscur",
+    "title": "Clair Obscur: Expedition 33",
+    "url": "https://store.steampowered.com/app/1903340/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1903340/ss_483a27df5072beb3a4650634a764bda750fbcb82.1920x1080.jpg?t=1782830877",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "dishonored",
+    "title": "Dishonored",
+    "url": "https://store.steampowered.com/app/205100/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/205100/ss_409bb8591d4c8278815510d9be737b57dfc57e06.1920x1080.jpg?t=1789050056",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "requiem",
+    "title": "A Plague Tale: Requiem",
+    "url": "https://store.steampowered.com/app/1182900/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1182900/ss_9cbcd6b81cc32ecf75b36f40b92157da78a19598.1920x1080.jpg?t=1784712272",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "life-is-strange",
+    "title": "Life is Strange - Episode 1",
+    "url": "https://store.steampowered.com/app/319630/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/319630/ss_d74ebed52e05e7c22937e53fcf6c7bf1de70ada1.1920x1080.jpg?t=1772725755",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "flashback",
+    "title": "Flashback",
+    "url": "https://store.steampowered.com/app/961620/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/961620/ss_66d947a1ff6a37c9a8489c85f79ca03efde263db.1920x1080.jpg?t=1683877151",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "another-world",
+    "title": "Another World – 20th Anniversary Edition",
+    "url": "https://store.steampowered.com/app/233550/",
+    "image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/233550/ss_9a4368ffc4eb10b7ecdecdd08e7c6a759e4fe307.1920x1080.jpg?t=1743411543",
+    "credit": "Official publisher imagery via Steam; copyright belongs to the respective rights holders. Modern store editions may be shown."
+  },
+  {
+    "slug": "alone-in-the-dark",
+    "title": "Alone in the Dark (1992)",
+    "url": "https://store.steampowered.com/app/548090/",
+    "credit": "Infogrames / THQ Nordic. Official store screenshot."
+  },
+  {
+    "slug": "rayman",
+    "url": "https://www.gog.com/en/game/rayman_forever",
+    "credit": "Ubisoft. Rayman Forever collection promotional artwork via GOG; original Rayman released in 1995."
+  },
+  {
+    "slug": "dune",
+    "url": "https://www.myabandonware.com/game/dune-23h",
+    "credit": "Cryo / Virgin Games (1992). Archival screenshot via My Abandonware."
+  }
+]

@@ -1,0 +1,15 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+const html=await fs.readFile('dist/index.html','utf8');
+const css=await fs.readFile('dist/styles.css','utf8');
+const js=await fs.readFile('dist/app.js','utf8');
+const localRefs=[...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map(m=>m[1]).filter(x=>!/^https?:/.test(x)).map(x=>x.split(/[?#]/)[0]);
+for(const file of localRefs)await fs.access(path.join('dist',file));
+const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);
+if(new Set(ids).size!==ids.length)throw Error('Duplicate element identifiers');
+for(const match of html.matchAll(/href="#([^"]+)"/g))if(!ids.includes(match[1]))throw Error(`Broken anchor: ${match[1]}`);
+for(const match of html.matchAll(/data-inspect="([^"]+)"/g))if(!js.includes(`${match[1]}:`)&&!js.includes(`'${match[1]}':`))throw Error(`Missing artifact: ${match[1]}`);
+for(const match of css.matchAll(/url\(["']?([^"')]+)["']?\)/g))if(!match[1].startsWith('data:')&&!match[1].startsWith('%23')&&!match[1].startsWith('#'))await fs.access(path.join('dist',match[1]));
+const credits=JSON.parse(await fs.readFile('dist/assets/image-credits.json','utf8'));
+if(credits.length<12)throw Error('Incomplete image credits');
+console.log(`Verified ${localRefs.length} local references, ${ids.length} unique IDs, section anchors, artifact entries, and ${credits.length} image credits.`);
