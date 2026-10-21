@@ -4,6 +4,10 @@
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  function targetFromHash(hash) {
+    try{return hash?.startsWith('#')?document.getElementById(decodeURIComponent(hash.slice(1))):null;}
+    catch{return null;}
+  }
   const finePointer = matchMedia('(pointer:fine)');
   const reducedPreference = matchMedia('(prefers-reduced-motion:reduce)');
   const desktop = () => innerWidth > 760;
@@ -13,7 +17,7 @@
   try { const saved = localStorage.getItem('lart-motion'); if (saved) motionOverride = saved === 'reduce'; } catch {}
   let reduced = motionOverride ?? reducedPreference.matches;
   let lenis = null, lenisTicker = null, motionContext = null, galleryTrigger = null;
-  let splits = [], started = false, resizing = false, heroTitleTimeline = null;
+  let splits = [], started = false, resizing = false, heroTitleTimeline = null, heroEntranceTimeline = null, launchTimeline = null;
   let scrollVelocity = 0, velocitySmoothed = 0, galleryProgress = 0;
   let restoringDialogFocus = false;
   let keyboardNavigation = false;
@@ -64,29 +68,45 @@
     'clair-obscur': { title: 'Clair Obscur', year: '2025', creator: 'Sandfall Interactive', studio: 'Montpellier, France', image: 'clair-obscur.jpg', deck: 'Expedition 33. A painted world with something to lose.', copy: 'Released on 24 April 2025, Sandfall Interactive’s debut brings a French artistic sensibility to a role-playing tradition shaped by Japanese games. Its world draws on Belle Époque imagery while combining turn-based choices with real-time reactions.\n\nThe contrast between beauty and erasure runs through its story, art direction, and music. At the end of this exhibition’s route, Expedition 33 offers a new answer to an old creative impulse: absorb influences from everywhere, then make them your own.', url: 'https://www.expedition33.com/post/out-now', credit: 'Sandfall Interactive / Kepler Interactive. Official Clair Obscur: Expedition 33 screenshot via Steam. Released 24 April 2025.' }
   };
 
+  Object.assign(artifacts, window.lartHistory?.artifacts || {});
+
   if (hasGSAP) gsap.registerPlugin(ScrollTrigger);
   function applyMotionPreference() {
     root.classList.toggle('motion-reduced', reduced);
+    root.classList.toggle('motion-full', !reduced);
     const toggle = $('.motion-toggle');
     toggle.setAttribute('aria-pressed', String(reduced));
+    toggle.setAttribute('aria-label','Reduced motion');
+    toggle.title=reduced?'Restore full motion':'Reduce motion';
     toggle.innerHTML = `${reduced ? 'Full motion' : 'Reduce motion'} <span>${reduced ? '●' : '○'}</span>`;
     if (reduced) root.classList.remove('custom-cursor');
-    if (reduced && heroTitleTimeline) settleHeroTitle();
+    if (reduced && (heroTitleTimeline || heroEntranceTimeline)) settleHeroEntrance();
     dispatchEvent(new Event('lart-motion-change'));
   }
   applyMotionPreference();
 
+  const progressLabel=$('.scroll-progress'),progressLine=$('.header-progress');
+  const eraSections=['pioneers','auteurs','worlds','renaissance'].map(id=>({id,element:document.getElementById(id)}));
+  const eraLinks=$$('.era-nav a');
+  let lastProgress=-1,lastActiveEra=null;
   function updateProgress() {
-    const maximum = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-    const progress = clamp(scrollY / maximum, 0, 1);
-    $('.scroll-progress').textContent = `${String(Math.round(progress * 100)).padStart(3, '0')}%`;
-    $('.header-progress').style.transform = `scaleX(${progress})`;
-    const now = performance.now();
-    if (!lenis) scrollVelocity = (scrollY - lastScroll) / Math.max(16, now - lastScrollTime) * 1000;
-    lastScroll = scrollY; lastScrollTime = now;
-    let active = '';
-    for (const id of ['pioneers', 'auteurs', 'worlds', 'renaissance']) if ($(`#${id}`).getBoundingClientRect().top < innerHeight * .5) active = id;
-    $$('.era-nav a').forEach(a => {const current = a.dataset.era === active; a.classList.toggle('is-active', current); if(current) a.setAttribute('aria-current','location'); else a.removeAttribute('aria-current');});
+    // Read geometry before changing text or styles to avoid an extra layout pass.
+    const maximum=Math.max(1,root.scrollHeight-innerHeight),progress=clamp(scrollY/maximum,0,1);
+    let active='';
+    for(const section of eraSections)if(section.element.getBoundingClientRect().top<innerHeight*.5)active=section.id;
+    const now=performance.now();
+    if(!lenis)scrollVelocity=(scrollY-lastScroll)/Math.max(16,now-lastScrollTime)*1000;
+    lastScroll=scrollY;lastScrollTime=now;
+    const percent=Math.round(progress*100);
+    if(percent!==lastProgress){progressLabel.textContent=String(percent).padStart(3,'0')+'%';lastProgress=percent;}
+    progressLine.style.transform='scaleX('+progress+')';
+    if(active!==lastActiveEra){
+      lastActiveEra=active;
+      eraLinks.forEach(link=>{
+        const current=link.dataset.era===active;link.classList.toggle('is-active',current);
+        if(current)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current');
+      });
+    }
   }
   let scrollQueued = false;
   addEventListener('scroll', () => {if (!scrollQueued) {requestAnimationFrame(() => {updateProgress();scrollQueued=false;});scrollQueued=true;}}, {passive:true});
@@ -104,12 +124,18 @@
       if (dialogOpen) lenis.stop();
     }
   }
+  let navigationUntil=0;
   function scrollToTarget(target, options={}) {
+    // Long chapter jumps cross pinned rooms; suspend their settling snaps until arrival.
+    if(typeof target!=='number'){
+      navigationUntil=performance.now()+(options.immediate?350:((options.duration??1.6)*1000+500));
+      if(hasGSAP)ScrollTrigger.getAll().forEach(trigger=>trigger.getTween(true)?.kill());
+    }
     if (lenis) lenis.scrollTo(target, {offset:typeof target==='number'?0:-parseInt(getComputedStyle(root).getPropertyValue('--header-height')), duration:1.6,...options});
     else {const top=typeof target==='number'?target:target.getBoundingClientRect().top+scrollY-parseInt(getComputedStyle(root).getPropertyValue('--header-height'));scrollTo({top,behavior:reduced||options.immediate?'instant':'smooth'});}
   }
   $$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
-    const target = $(a.getAttribute('href'));
+    const target = targetFromHash(a.getAttribute('href'));
     if (!target) return;
     e.preventDefault();closeMenu();
     scrollToTarget(target);
@@ -125,6 +151,7 @@
     if (!hasGSAP) return;
     motionContext?.revert();
     studioChronicle.reset();
+    frenchSignature.reset();
     splits.forEach(s=>s.revert());splits=[];
     galleryTrigger = null;
     initSmoothScroll();
@@ -132,6 +159,7 @@
       gsap.set('.reveal',{clearProps:'all'});
       $('.gallery-window').style.overflowX='auto';
       studioChronicle.setup({animated:false});
+      frenchSignature.setup({animated:false});
       updateProgress();return;
     }
     $('.gallery-window').style.removeProperty('overflow-x');
@@ -165,9 +193,12 @@
         gsap.fromTo('.worlds-image',{y:60},{y:-40,ease:'none',scrollTrigger:{trigger:'.worlds-intro',start:'top bottom',end:'bottom top',scrub:1.5}});
         gsap.fromTo('.footer-art h2',{scale:.93,y:30},{scale:1,y:0,ease:'none',scrollTrigger:{trigger:'.footer-art',start:'top bottom',end:'bottom 75%',scrub:1.4}});
       }
-      gsap.fromTo('.worlds',{backgroundColor:'#F6F5F0'},{backgroundColor:'#EAE6DF',ease:'none',scrollTrigger:{trigger:'.worlds',start:'top 90%',end:'top 30%',scrub:true}});
+      gsap.to('.origins-orbits',{rotation:72,svgOrigin:'250 240',ease:'none',scrollTrigger:{trigger:'.history-origins',start:'top bottom',end:'bottom top',scrub:1.5}});
+      gsap.fromTo('.archive-disc',{rotation:-9},{rotation:13,ease:'none',scrollTrigger:{trigger:'.history-disc',start:'top bottom',end:'bottom top',scrub:1.6}});
+      frenchSignature.setup({animated:true});
+      gsap.fromTo('.worlds',{'--worlds-blend':0},{'--worlds-blend':1,ease:'none',scrollTrigger:{trigger:'.worlds',start:'top 90%',end:'top 30%',scrub:true}});
     });
-    ScrollTrigger.refresh();updateProgress();
+    ScrollTrigger.refresh();lenis?.resize();updateProgress();
   }
   function changeYear(year) {
     const el=$('.era-year');
@@ -221,23 +252,12 @@
 
   const studioChronicle=window.createStudioChronicle({
     gsap:hasGSAP?gsap:null,ScrollTrigger:hasGSAP?ScrollTrigger:null,
-    isReduced:()=>reduced,isDialogOpen:()=>dialogOpen,scrollTo:scrollToTarget
+    isReduced:()=>reduced,isDialogOpen:()=>dialogOpen,isNavigating:()=>performance.now()<navigationUntil,scrollTo:scrollToTarget
   });
-  const themes={
-    visual:{number:'01 / VISUAL CULTURE',title:'Beyond the<br><em>drawn panel.</em>',copy:'Bande dessinée offers a way to think in striking compositions, expressive silhouettes, and worlds suggested beyond the frame. Another World and Rayman take radically different routes through that visual imagination.',reference:'SEE ALSO / ANOTHER WORLD, RAYMAN',shape:'m200 54 130 116-130 113L76 170Z',node:0},
-    world:{number:'02 / SYSTEMIC WORLD-BUILDING',title:'A place that<br><em>answers back.</em>',copy:'Arkane’s spaces are built for interpretation. A roof, an open window, a conversation: each can become a route. From Arx Fatalis to Dishonored, the environment is a system the player learns to read and change.',reference:'SEE ALSO / ARX FATALIS, DISHONORED',shape:'m200 92 145 78-145 79L108 170Z',node:1},
-    music:{number:'03 / ELECTRONIC MUSIC SCORING',title:'The sound<br><em>of elsewhere.</em>',copy:'Dune’s electronic score, composed by Stéphane Picq and Philip Ulrich, turns an unfamiliar planet into an intimate dream. Music becomes a form of world-building, carrying emotion beyond what the screen can show.',reference:'SEE ALSO / DUNE, ANOTHER WORLD',shape:'m200 107 84 63-84 135L94 170Z',node:2},
-    mood:{number:'04 / MELANCHOLIC ATMOSPHERE',title:'Beauty with<br><em>an ache.</em>',copy:'Vulnerability, absence, and uncertain futures run through very different works. Another World’s isolation, Life is Strange’s fragile memories, and Clair Obscur’s threatened lives each let emotion shape the experience of play.',reference:'SEE ALSO / LIFE IS STRANGE, CLAIR OBSCUR',shape:'m200 91 94 79-94 91L55 170Z',node:3}
-  };
-  $$('.diagram-tab').forEach(button=>button.addEventListener('click',()=>{
-    const item=themes[button.dataset.theme];
-    $$('.diagram-tab').forEach(b=>{b.classList.toggle('selected',b===button);b.setAttribute('aria-pressed',String(b===button));});
-    $('.diagram-number').textContent=item.number;$('.diagram-title').innerHTML=item.title;$('.diagram-copy').textContent=item.copy;$('.diagram-reference').textContent=item.reference;$('.radar-shape').setAttribute('d',item.shape);
-    $$('.radar-nodes circle').forEach((c,i)=>c.classList.toggle('selected',i===item.node));
-    if(hasGSAP&&!reduced)gsap.fromTo('.diagram-commentary',{opacity:.25,y:12},{opacity:1,y:0,duration:.6,ease:'power3.out',overwrite:true});
-  }));
-  $('.radar-nodes circle').classList.add('selected');
-  $$('.radar-nodes circle').forEach((node,index)=>{node.style.cursor='pointer';node.addEventListener('click',()=>$$('.diagram-tab')[index].click());node.addEventListener('pointerenter',()=>$$('.diagram-tab')[index].click());});
+  const frenchSignature=window.createFrenchSignature({
+    gsap:hasGSAP?gsap:null,ScrollTrigger:hasGSAP?ScrollTrigger:null,
+    isReduced:()=>reduced,isDialogOpen:()=>dialogOpen,isNavigating:()=>performance.now()<navigationUntil,scrollTo:scrollToTarget
+  });
 
   let previousFocus=null,dialogOpen=false,activeDialog=null,scrollLock=null;
   let dialogTrigger=null,dialogTransition=null;
@@ -261,7 +281,7 @@
     return {left,top,width,height,borderRadius:Math.min(radius,width/2,height/2)};
   }
   function originImage(element) {
-    return $$('img',element).find(img=>img.complete&&img.naturalWidth&&img.getClientRects().length&&getComputedStyle(img).visibility!=='hidden')||null;
+    return [...element.querySelectorAll('img')].find(img=>img.complete&&img.naturalWidth&&img.getClientRects().length&&getComputedStyle(img).visibility!=='hidden')||$('canvas#hero-ascii-canvas',element)||null;
   }
   function frameOf(element) {
     const {left,top,width,height}=element.getBoundingClientRect();
@@ -276,7 +296,10 @@
     shell.setAttribute('aria-hidden','true');shell.inert=true;
     for(const [key,value] of Object.entries(frame))shell.style[key]=value+'px';
     if(image&&imageFrame){
-      const picture=document.createElement('img');picture.src=image.currentSrc||image.src;picture.alt='';
+      const picture=document.createElement('img');
+      if(image.tagName==='CANVAS'){try{picture.src=image.toDataURL('image/png');}catch{picture.src='assets/another-world-alt.jpg';}}
+      else picture.src=image.currentSrc||image.src;
+      picture.alt='';
       picture.draggable=false;picture.style.objectPosition=getComputedStyle(image).objectPosition;
       if(image.classList.contains('pixel-art'))picture.classList.add('pixel-art');
       for(const [key,value] of Object.entries(imageFrame))picture.style[key]=value+'px';
@@ -492,6 +515,8 @@
     });
   }
   initCursor();
+  window.createHeroAscii?.({isReduced:()=>reduced,isDialogOpen:()=>dialogOpen});
+  window.createCursorFog?.({isReduced:()=>reduced,isDesktop:desktop,pointerQuery:finePointer});
   const trailGrid=$('.trail-grid');
   for(let i=0;i<108;i++){const cell=document.createElement('span');let timer;cell.addEventListener('pointerenter',()=>{if(reduced)return;clearTimeout(timer);cell.classList.add('active');timer=setTimeout(()=>cell.classList.remove('active'),100);});trailGrid.append(cell);}
 
@@ -525,6 +550,8 @@
     const uniforms={
       uTime:{value:0},uMouse:{value:new THREE.Vector2(.5,.5)},uWake:{value:new THREE.Vector2(.5,.5)},
       uFlow:{value:new THREE.Vector2()},uVelocity:{value:0},uPresence:{value:0},uScroll:{value:scrollY/innerHeight},
+      uPaper:{value:new THREE.Vector3(.9647,.9608,.9412)},uCream:{value:new THREE.Vector3(.9176,.9020,.8745)},
+      uStone:{value:new THREE.Vector3(.71,.69,.65)},uBlue:{value:new THREE.Vector3(0.,.1843,.6549)},
       uResolution:{value:new THREE.Vector2(innerWidth,innerHeight)},
       uRipples:{value:ripples.map(ripple=>new THREE.Vector4(ripple.x,ripple.y,ripple.time,1))}
     };
@@ -537,6 +564,7 @@
       uniform float uScroll;
       uniform vec2 uResolution;
       uniform vec4 uRipples[4];
+      uniform vec3 uPaper,uCream,uStone,uBlue;
       float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       void main(){
         float aspect=uResolution.x/uResolution.y;
@@ -567,8 +595,8 @@
         float level=field*14.5-uTime*.32;
         float edge=max(fwidth(level),.0005);
         float grain=(hash(gl_FragCoord.xy)-.5)*.008;
-        vec3 paper=vec3(.9647,.9608,.9412),cream=vec3(.9176,.9020,.8745);
-        vec3 stone=vec3(.71,.69,.65),blue=vec3(0.,.1843,.6549);
+        vec3 paper=uPaper,cream=uCream;
+        vec3 stone=uStone,blue=uBlue;
         // A soft blue crest travels along the field, coloring only its contour ink.
         float chromaticWave=.5+.5*sin(p.x*4.1+p.y*2.7+field*2.4-uTime*1.35);
         float pulse=chromaticWave*chromaticWave*chromaticWave;
@@ -585,6 +613,14 @@
       }`});
     const scene=new THREE.Scene();scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),material));const camera=new THREE.Camera();
     let frame=0,lastFrame=0,contextLost=false,pointerEstablished=false,stopFallback=null;
+    window.lartTheme?.subscribe(palette=>{
+      for(const [uniform,key] of [['uPaper','background'],['uCream','secondary'],['uStone','contour'],['uBlue','accent']]){
+        // The custom shader writes display-space RGB directly, as its original palette did.
+        const color=new THREE.Color(palette[key]).convertLinearToSRGB();
+        uniforms[uniform].value.set(color.r,color.g,color.b);
+      }
+      if(!contextLost)renderer.render(scene,camera);
+    });
     const render=time=>{
       frame=0;
       if(document.hidden||reduced||contextLost)return;
@@ -615,57 +651,10 @@
     addEventListener('pageshow',syncAmbient);
     renderer.render(scene,camera);root.classList.add('webgl-active');syncAmbient();
     addEventListener('resize',()=>{renderer.setPixelRatio(pixelRatio());renderer.setSize(innerWidth,innerHeight);uniforms.uResolution.value.set(innerWidth,innerHeight);if(reduced&&!contextLost)renderer.render(scene,camera);},{passive:true});
-    // Each image plane owns an isolated, short-lived draw loop; offscreen planes do not render.
-    if(!finePointer.matches||!desktop())return;
-    $$('.image-distort').forEach(container=>{
-      const img=$('img',container);if(!img)return;
-      let planeRenderer=null,planeScene,planeCamera,planeMaterial,visible=false,hover=false,frame=0,dirty=false,lastDraw=0,planeTime=0;
-      const planeTarget=new THREE.Vector2(.5,.5);
-      const start=()=>{
-        if(reduced||planeRenderer||!img.complete||!img.naturalWidth)return;
-        try {
-          planeRenderer=new THREE.WebGLRenderer({alpha:true,antialias:false,powerPreference:'low-power'});planeRenderer.setPixelRatio(Math.min(devicePixelRatio,1.5));planeRenderer.setSize(container.clientWidth,container.clientHeight,false);planeRenderer.outputColorSpace=THREE.LinearSRGBColorSpace;
-          // Three.js must receive intrinsic dimensions, not the styled image's layout size.
-          const textureSource=document.createElement('canvas');
-          textureSource.width=img.naturalWidth;textureSource.height=img.naturalHeight;
-          const textureContext=textureSource.getContext('2d');
-          if(!textureContext)throw new Error('Image texture canvas unavailable');
-          textureContext.drawImage(img,0,0);
-          const texture=new THREE.CanvasTexture(textureSource);texture.colorSpace=THREE.NoColorSpace;
-          if(img.classList.contains('pixel-art')){texture.minFilter=THREE.NearestFilter;texture.magFilter=THREE.NearestFilter;texture.generateMipmaps=false;}
-          planeMaterial=new THREE.ShaderMaterial({uniforms:{uTexture:{value:texture},uMouse:{value:new THREE.Vector2(.5,.5)},uStrength:{value:0},uTime:{value:0},uImageAspect:{value:img.naturalWidth/img.naturalHeight},uPlaneAspect:{value:container.clientWidth/container.clientHeight}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}',fragmentShader:`precision highp float;varying vec2 vUv;uniform sampler2D uTexture;uniform vec2 uMouse;uniform float uStrength,uTime,uImageAspect,uPlaneAspect;void main(){vec2 uv=vUv;vec2 scale=vec2(min(uPlaneAspect/uImageAspect,1.),min(uImageAspect/uPlaneAspect,1.));uv=(uv-.5)*scale+.5;vec2 offset=vUv-uMouse;float d=length(offset);float ripple=sin(d*22.-uTime*2.)*exp(-d*5.)*uStrength*.013;uv+=offset/(d+.18)*ripple;gl_FragColor=texture2D(uTexture,clamp(uv,vec2(.001),vec2(.999)));}`});
-          planeScene=new THREE.Scene();planeScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),planeMaterial));planeCamera=new THREE.Camera();container.insertBefore(planeRenderer.domElement,img.nextSibling);container.classList.add('webgl-ready');dirty=true;
-        }catch{planeRenderer?.dispose();planeRenderer=null;}
-      };
-      const draw=time=>{
-        frame=0;if(!planeRenderer||reduced||!visible||document.hidden){lastDraw=0;return;}
-        const dt=lastDraw?Math.min((time-lastDraw)*.001,.05):1/60;lastDraw=time;planeTime+=dt;
-        const strength=planeMaterial.uniforms.uStrength;
-        strength.value=damp(strength.value,hover?1:0,8,dt);
-        planeMaterial.uniforms.uMouse.value.lerp(planeTarget,-Math.expm1(-12*dt));
-        planeMaterial.uniforms.uTime.value=planeTime;
-        planeRenderer.render(planeScene,planeCamera);dirty=false;
-        if(hover||strength.value>.005)frame=requestAnimationFrame(draw);else lastDraw=0;
-      };
-      const queue=()=>{if(!frame)frame=requestAnimationFrame(draw);};
-      const observer=new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(visible){start();if(dirty||hover)queue();}else{cancelAnimationFrame(frame);frame=0;lastDraw=0;}},{rootMargin:'150px'});observer.observe(container);
-      img.addEventListener('load',()=>{if(visible){start();queue();}},{once:true});
-      container.addEventListener('pointerenter',()=>{hover=true;start();queue();});container.addEventListener('pointerleave',()=>{hover=false;queue();});
-      container.addEventListener('pointermove',e=>{if(!planeMaterial||reduced)return;const box=container.getBoundingClientRect();planeTarget.set((e.clientX-box.left)/box.width,1-(e.clientY-box.top)/box.height);queue();});
-      const syncPlane=()=>{cancelAnimationFrame(frame);frame=0;lastDraw=0;if(!document.hidden&&!reduced&&visible){start();if(hover||dirty||planeMaterial?.uniforms.uStrength.value>.005)queue();}};
-      document.addEventListener('visibilitychange',syncPlane);addEventListener('lart-motion-change',syncPlane);
-      const resizePlane=()=>{
-        if(!planeRenderer)return;
-        const width=Math.max(1,container.clientWidth),height=Math.max(1,container.clientHeight);
-        // CSS owns the visible size; the renderer only resizes its drawing buffer.
-        planeRenderer.setSize(width,height,false);
-        planeMaterial.uniforms.uPlaneAspect.value=width/height;
-        dirty=true;if(visible)queue();
-      };
-      const planeResizeObserver=new ResizeObserver(resizePlane);planeResizeObserver.observe(container);
-    });
+
   }
   initWebGL();
+  window.createImagePlanes({THREE:window.THREE,isReduced:()=>reduced,isDesktop:desktop,pointerQuery:finePointer});
   if(hasGSAP) {
     const compass=$('.compass');let angle=0,lastSkew='',lastStretch='';
     gsap.ticker.add((time,deltaTime)=>{
@@ -684,16 +673,25 @@
     if(hasGSAP){gsap.set('.hero-line-text',{clearProps:'transform,opacity,visibility'});gsap.set('.hero-line-wipe',{clearProps:'transform,transformOrigin,visibility'});}
     root.classList.remove('hero-title-entering');
   }
-  function animateHeroTitle() {
+  function settleHeroEntrance() {
+    heroEntranceTimeline?.kill();heroEntranceTimeline=null;
+    settleHeroTitle();
+    if(hasGSAP){
+      gsap.set('.hero-artifact',{clearProps:'clipPath,opacity,visibility'});
+      gsap.set('.site-header,.hero-intro,.hero-kicker,.hero-side-note,.hero-bottom',{clearProps:'transform,opacity,visibility'});
+    }
+    root.classList.remove('entrance-pending');
+  }
+  function animateHeroTitle(paused=false) {
     settleHeroTitle();
     if(!hasGSAP||reduced)return;
     const lines=$$('.hero-line');
     root.classList.add('hero-title-entering');
     gsap.set('.hero-line-text',{xPercent:-18,autoAlpha:0});
     gsap.set('.hero-line-wipe',{x:0,xPercent:-102,scaleX:1,transformOrigin:'100% 50%',visibility:'visible'});
-    heroTitleTimeline=gsap.timeline({delay:.28,onComplete:settleHeroTitle});
+    heroTitleTimeline=gsap.timeline({paused,onComplete:settleHeroTitle});
     lines.forEach((line,index)=>{
-      const block=$('.hero-line-wipe',line),text=$('.hero-line-text',line),start=index*.18;
+      const block=$('.hero-line-wipe',line),text=$('.hero-line-text',line),start=.28+index*.18;
       // Sweep in first; then collapse toward the right to uncover the moving text.
       heroTitleTimeline
         .to(block,{xPercent:0,duration:.58,ease:'power3.inOut'},start)
@@ -702,42 +700,94 @@
         .to(text,{xPercent:0,duration:1.02,ease:'power3.out'},start+.66);
     });
   }
-
+  function prepareHeroEntrance() {
+    // Seed every initial state while the opaque curtain still covers the page.
+    animateHeroTitle(true);
+    gsap.set('.hero-artifact',{clipPath:'inset(100% 0 0 0)',autoAlpha:0});
+    gsap.set('.hero-intro,.hero-kicker,.hero-side-note,.hero-bottom',{y:20,autoAlpha:0});
+    gsap.set('.site-header',{y:-12,autoAlpha:0});
+    heroEntranceTimeline=gsap.timeline({paused:true,onComplete:()=>{
+      gsap.set('.hero-artifact',{clearProps:'clipPath,opacity,visibility'});
+      gsap.set('.site-header,.hero-intro,.hero-kicker,.hero-side-note,.hero-bottom',{clearProps:'transform,opacity,visibility'});
+      heroEntranceTimeline=null;
+    }})
+      .to('.site-header',{y:0,autoAlpha:1,duration:.85,ease:'power3.out'},.12)
+      .to('.hero-artifact',{clipPath:'inset(0% 0 0 0)',autoAlpha:1,duration:1.6,ease:'power4.inOut'},.12)
+      .to('.hero-intro,.hero-kicker,.hero-side-note,.hero-bottom',{y:0,autoAlpha:1,duration:1,stagger:.1,ease:'power3.out'},.4);
+    // Inline GSAP states now own visibility; CSS covered the earlier first paint.
+    root.classList.remove('entrance-pending');
+  }
+  function finishOpening() {
+    $('.preloader')?.remove();
+    root.classList.add('ready');document.body.classList.remove('loading');lenis?.start();
+    setTimeout(()=>{
+      if(hasGSAP)ScrollTrigger.refresh();
+      if(location.hash){const destination=targetFromHash(location.hash);if(destination)scrollToTarget(destination,{immediate:true});}
+      updateProgress();
+    },200);
+  }
+  function forceEntranceVisible() {
+    launchTimeline?.kill();launchTimeline=null;
+    settleHeroEntrance();finishOpening();
+  }
+  // The head's fail-open watchdog can always release an interrupted entrance.
+  window.lartRevealEntrance=forceEntranceVisible;
+  addEventListener('lart-motion-change',()=>{
+    if(reduced&&launchTimeline)forceEntranceVisible();
+  });
   async function launch() {
     if(started)return;started=true;
     await Promise.race([document.fonts.ready,new Promise(r=>setTimeout(r,1800))]);
     setupMotion();
-    const revealHero=()=>{
-      root.classList.add('ready');document.body.classList.remove('loading');lenis?.start();
-      animateHeroTitle();
-      if(hasGSAP&&!reduced){gsap.from('.hero-artifact',{clipPath:'inset(100% 0 0 0)',duration:1.6,ease:'power4.inOut',delay:.12});gsap.from('.hero-intro,.hero-kicker,.hero-side-note',{y:20,opacity:0,duration:1,stagger:.1,delay:.4,ease:'power3.out'});}
-      setTimeout(()=>{if(hasGSAP)ScrollTrigger.refresh();if(location.hash){const destination=$(location.hash);if(destination)scrollToTarget(destination,{immediate:true});}updateProgress();},200);
-    };
-    if(!hasGSAP||reduced||!$('.preloader')){ $('.preloader')?.remove();revealHero();return; }
+    if(!hasGSAP||reduced||!$('.preloader')){settleHeroEntrance();finishOpening();return;}
     lenis?.stop();
-    const paths=$$('.loader-emblem path');paths.forEach(path=>{const length=path.getTotalLength();gsap.set(path,{strokeDasharray:length,strokeDashoffset:length});});
-    const count={value:0};const years=['1983','1991','1998','2012','PRESENT'];const logs=['INDEXING // THE FIRST PIXELS','LOADING // ANOTHER_WORLD_POLYGON_DATA','MAPPING // THE AUTEUR GENERATION','TRACING // WORLDS_WITHOUT_LIMITS','ARCHIVE READY // ENTER THE EXHIBITION'];
-    const loadingDuration=4.2,curtainStart=loadingDuration+.15;
-    const timeline=gsap.timeline();
+    prepareHeroEntrance();
+    const loader=$('.preloader'),paths=$$('.loader-emblem path');
+    paths.forEach(path=>{const length=path.getTotalLength();gsap.set(path,{strokeDasharray:length,strokeDashoffset:length});});
+    const count={value:0},countLabel=$('.loader-count'),yearLabel=$('.loader-year'),logLabel=$('.loader-log');
+    const years=['1983','1991','1998','2012','PRESENT'];
+    const logs=['INDEXING // THE FIRST PIXELS','LOADING // ANOTHER_WORLD_POLYGON_DATA','MAPPING // THE AUTEUR GENERATION','TRACING // WORLDS_WITHOUT_LIMITS','ARCHIVE READY // ENTER THE EXHIBITION'];
+    const loadingDuration=5.7,curtainStart=loadingDuration+.15;
+    const timeline=gsap.timeline({onComplete:()=>{launchTimeline=null;finishOpening();}});launchTimeline=timeline;
     timeline
-      .to(paths,{strokeDashoffset:0,duration:2.8,stagger:.1,ease:'power2.inOut'},0)
+      .to(paths,{strokeDashoffset:0,duration:3.6,stagger:.1,ease:'power2.inOut'},0)
       .to(count,{value:100,duration:loadingDuration,ease:'power2.inOut',onUpdate:()=>{
         const n=Math.round(count.value),index=Math.min(4,Math.floor(n/22));
-        $('.loader-count').textContent=`${String(n).padStart(3,'0')}%`;
-        $('.loader-year').textContent=years[index];$('.loader-log').textContent=logs[index];
+        countLabel.textContent=String(n).padStart(3,'0')+'%';
+        yearLabel.textContent=years[index];logLabel.textContent=logs[index];
       }},0)
+      .call(()=>loader.classList.remove('is-glitching'),null,loadingDuration)
       .to('.loader-top,.loader-center,.loader-bottom',{opacity:0,y:-20,duration:.3,stagger:.04,ease:'power3.in'},loadingDuration+.05)
       .to('.loader-panels span',{scaleY:0,duration:.8,stagger:.04,ease:'power4.inOut'},curtainStart)
-      .call(revealHero,null,curtainStart+.6)
-      .set('.preloader',{display:'none'});
+      .call(()=>{
+        // Play prepared timelines as the curtain opens; nothing resets after exposure.
+        root.classList.add('ready');
+        heroTitleTimeline?.play(0);heroEntranceTimeline?.play(0);
+      },null,curtainStart+.18);
+    for(const at of [.65,1.7,2.85,4.1,5.25]){
+      timeline.call(()=>loader.classList.add('is-glitching'),null,at)
+        .call(()=>loader.classList.remove('is-glitching'),null,at+.2);
+    }
   }
-  launch().catch(()=>{settleHeroTitle();$('.preloader')?.remove();root.classList.add('ready');document.body.classList.remove('loading');lenis?.start();});
-  $('.motion-toggle').addEventListener('click',()=>{
+  launch().catch(forceEntranceVisible);
+  function rebuildMotionKeepingPlace(anchor) {
+    const top=anchor?.isConnected?anchor.getBoundingClientRect().top:null;
+    applyMotionPreference();setupMotion();
+    if(top!==null&&anchor.isConnected){
+      scrollToTarget(scrollY+anchor.getBoundingClientRect().top-top,{immediate:true,force:true});
+      if(hasGSAP)ScrollTrigger.update();
+      updateProgress();
+    }
+  }
+  $('.motion-toggle').addEventListener('click',event=>{
     reduced=!reduced;motionOverride=reduced;
     try{localStorage.setItem('lart-motion',reduced?'reduce':'full');}catch{}
-    applyMotionPreference();setupMotion();
+    rebuildMotionKeepingPlace(event.currentTarget);
   });
-  reducedPreference.addEventListener('change',e=>{if(motionOverride===null){reduced=e.matches;applyMotionPreference();setupMotion();}});
-  let resizeTimer,lastWidth=innerWidth;
-  addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(Math.abs(innerWidth-lastWidth)<3)return;lastWidth=innerWidth;resizing=true;setupMotion();resizing=false;},250);},{passive:true});
+  reducedPreference.addEventListener('change',e=>{if(motionOverride===null){
+    const anchor=dialogOpen?previousFocus:document.elementFromPoint(innerWidth*.5,innerHeight*.5)?.closest('section[id],footer[id]');
+    reduced=e.matches;rebuildMotionKeepingPlace(anchor);
+  }});
+  let resizeTimer,lastWidth=innerWidth,lastHeight=innerHeight;
+  addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(Math.abs(innerWidth-lastWidth)<3&&(innerWidth<=760||Math.abs(innerHeight-lastHeight)<40))return;lastWidth=innerWidth;lastHeight=innerHeight;resizing=true;setupMotion();resizing=false;},250);},{passive:true});
 })();

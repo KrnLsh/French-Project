@@ -12,7 +12,7 @@
     {year:1989,count:7,added:0,kicker:'FROM FOUNDATIONS TO CREATIONS',title:'The future<br><em>comes into view.</em>',copy:'Future Wars appears under the Delphine name in 1989, with Éric Chahi contributing its visual world. The graph stays at seven because this selected sample adds no new foundation here. Creative output continues, opening the door to the auteur decade.',studios:'Future Wars / Delphine Software',context:'Amiga / Atari ST / PC DOS',source:'https://www.anotherworld.fr/anotherworld_es/page_ludographie.htm'}
   ];
 
-  window.createStudioChronicle = ({gsap,ScrollTrigger,isReduced,isDialogOpen,scrollTo}) => {
+  window.createStudioChronicle = ({gsap,ScrollTrigger,isReduced,isDialogOpen,isNavigating=()=>false,scrollTo}) => {
     const chapter=document.querySelector('#studio-growth');
     if(!chapter)return {setup(){},reset(){}};
     const $=selector=>chapter.querySelector(selector);
@@ -22,7 +22,8 @@
     const lengths=[0];
     for(let i=1;i<points.length;i++)lengths.push(lengths[i-1]+Math.hypot(points[i].x-points[i-1].x,points[i].y-points[i-1].y));
     let baseline=340,unit=40,total=lengths.at(-1);
-    const line=$('.chronicle-line'),area=$('.chronicle-area');
+    const line=$('.chronicle-line'),area=$('.chronicle-area'),guide=$('.chronicle-guide');
+    const heads=[$('.chronicle-head'),$('.chronicle-halo')];
     const playhead={value:0};
     const content=[$('.chronicle-story')];
     let index=-1,trigger=null,entry=null,animation=null,announcementTimer=0,selectingUntil=0;
@@ -32,6 +33,7 @@
       parent.append(node);return node;
     };
     const bars=[],dots=[],labels=[];
+    const barHeights=records.map(()=>NaN),pointReached=records.map(()=>null);
     [0,2,4,6,7].forEach(count=>{
       const y=340-count*40;
       create('path',{d:'M52 '+y+'H760'},$('.chronicle-grid'));
@@ -70,7 +72,7 @@
         const current=i===index;button.setAttribute('aria-pressed',String(current));
         if(current)button.setAttribute('aria-current','step');else button.removeAttribute('aria-current');
         button.classList.toggle('is-complete',i<index);
-        labels[i].classList.toggle('is-current',current);dots[i].classList.toggle('is-current',current);
+        labels[i].classList.toggle('is-current',current);dots[i].classList.toggle('is-current',current);bars[i].classList.toggle('is-current',current);
       });
       $('.chronicle-prev').disabled=index===0;$('.chronicle-next').disabled=index===records.length-1;
       clearTimeout(announcementTimer);
@@ -89,15 +91,13 @@
       line.style.strokeDashoffset=String(total-travelled);
       const visited=points.slice(0,whole+1).map(p=>p.x+' '+p.y).join(' L');
       area.setAttribute('d','M68 '+baseline+' L'+visited+' L'+x+' '+y+' L'+x+' '+baseline+' Z');
-      $('.chronicle-guide').setAttribute('d','M'+x+' 25V'+baseline);
-      for(const selector of ['.chronicle-head','.chronicle-halo']){
-        $(selector).setAttribute('cx',x);$(selector).setAttribute('cy',y);
-      }
+      guide.setAttribute('d','M'+x+' 25V'+baseline);
+      for(const head of heads){head.setAttribute('cx',x);head.setAttribute('cy',y);}
       bars.forEach((bar,i)=>{
         const growth=clamp(step-i+1,0,1),height=records[i].count*unit*growth;
-        bar.setAttribute('height',height);bar.setAttribute('y',baseline-height);
-        bar.classList.toggle('is-current',i===Math.round(step));
-        dots[i].classList.toggle('is-reached',i<=step+.001);
+        if(height!==barHeights[i]){bar.setAttribute('height',height);bar.setAttribute('y',baseline-height);barHeights[i]=height;}
+        const reached=i<=step+.001;
+        if(reached!==pointReached[i]){dots[i].classList.toggle('is-reached',reached);pointReached[i]=reached;}
       });
       panel.style.setProperty('--chronicle-progress',String(value));
       showYear(Math.round(step),animate);
@@ -107,7 +107,7 @@
       if(isDialogOpen())return;
       next=clamp(next,0,7);
       if(trigger){
-        trigger.getTween(true)?.kill();
+        trigger.getTween(true)?.kill?.();
         selectingUntil=performance.now()+1200;
         const target=clamp(trigger.start+(trigger.end-trigger.start)*next/7,trigger.start+1,trigger.end-1);
         scrollTo(target,{duration:.9,immediate:innerWidth<=760});
@@ -131,7 +131,7 @@
     $('.chronicle-next').addEventListener('click',()=>selectYear(index+1));
     const resizeLabels=()=>{
       const compact=innerWidth<=760;
-      baseline=compact?204:340;unit=compact?24:40;
+      baseline=compact?204:340;unit=compact?24:40;barHeights.fill(NaN);
       chart.setAttribute('viewBox','0 0 800 '+(compact?280:420));
       lengths.length=1;
       points.forEach((point,i)=>{
@@ -220,7 +220,7 @@
           id:'studio-chronicle',trigger:stage,start:()=> 'top '+header()+'px',
           end:()=>'+='+Math.max(innerHeight*.72,520)*7,pin:true,scrub:.38,
           anticipatePin:1,invalidateOnRefresh:true,
-          snap:{snapTo:(value,self)=>self.isActive&&!isDialogOpen()&&performance.now()>=selectingUntil?Math.round(value*7)/7:value,
+          snap:{snapTo:(value,self)=>self.isActive&&!isDialogOpen()&&!isNavigating()&&performance.now()>=selectingUntil?Math.round(value*7)/7:value,
             directional:false,inertia:false,delay:.22,duration:{min:.25,max:.65},ease:'power3.inOut'},
           onToggle:self=>chapter.classList.toggle('is-active',self.isActive),
           onRefresh:self=>{playhead.value=self.progress;draw(self.progress,false);},

@@ -4,22 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#F6F5F0">
-  <meta name="description" content="L’Art du Jeu. An independent digital exhibition tracing four decades of French video game artistry, from bedroom pioneers to a contemporary renaissance.">
+  <meta name="description" content="L’Art du Jeu. An independent digital exhibition tracing five decades of French video game artistry, from bedroom pioneers to a contemporary renaissance.">
   <title>L’Art du Jeu — A History of Video Games in France</title>
+  <script src="theme.js?v=2"></script>
   <link rel="icon" href="assets/emblem.svg" type="image/svg+xml">
   <link rel="preload" href="assets/type-1.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="assets/another-world-alt.jpg" as="image" fetchpriority="high">
   <link rel="stylesheet" href="assets/fonts.css">
-  <link rel="stylesheet" href="styles.css?v=14">
-  <link rel="stylesheet" href="chronicle.css?v=15">
-  <script>document.documentElement.classList.add('js');setTimeout(()=>{if(!document.documentElement.classList.contains('ready')){document.documentElement.classList.add('ready');document.body?.classList.remove('loading');document.querySelector('.preloader')?.remove()}},10000)</script>
+  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="chronicle.css?v=16">
+  <link rel="stylesheet" href="signature.css?v=5">
+  <link rel="stylesheet" href="theme.css?v=3">
+  <link rel="stylesheet" href="entrance.css?v=1">
+  <link rel="stylesheet" href="hero-ascii.css?v=2">
+  <link rel="stylesheet" href="history.css?v=2">
+  <script>document.documentElement.classList.add('js','entrance-pending');setTimeout(()=>{if(!document.documentElement.classList.contains('ready')){try{window.lartRevealEntrance?.()}finally{document.documentElement.classList.remove('entrance-pending');document.documentElement.classList.add('ready');document.body?.classList.remove('loading');document.querySelector('.preloader')?.remove()}}},10000)</script>
   <script src="assets/vendor/gsap.min.js" defer></script>
   <script src="assets/vendor/ScrollTrigger.min.js" defer></script>
   <script src="assets/vendor/lenis.min.js" defer></script>
   <script src="assets/vendor/three.min.js" defer></script>
   <script src="assets/vendor/split-type.min.js" defer></script>
-  <script src="chronicle.js?v=15" defer></script>
-  <script src="app.js?v=15" defer></script>
+  <script src="chronicle.js?v=18" defer></script>
+  <script src="signature.js?v=8" defer></script>
+  <script src="image-planes.js?v=2" defer></script>
+  <script src="cursor-fog.js?v=2" defer></script>
+  <script src="hero-ascii.js?v=2" defer></script>
+  <script src="history-content.js?v=1" defer></script>
+  <script src="app.js?v=29" defer></script>
 </head>
 <body class="loading">
   <a class="skip-link" href="#main">Skip to the exhibition</a>
@@ -27,13 +37,18 @@
     <div class="loader-panels"><span></span><span></span><span></span><span></span><span></span></div>
     <div class="loader-top mono"><span>L’ART DU JEU</span><span>OPENING THE ARCHIVE</span></div>
     <div class="loader-center">
-      <svg class="loader-emblem" viewBox="0 0 200 200" fill="none"><path d="M100 12 185 62v76l-85 50-85-50V62Z M15 62l85 50 85-50 M100 112v76 M100 12v100 M15 138l85-50 85 50 M58 37v76l85 50 M143 37v76l-85 50"/><path d="m58 87 42-25 43 25-43 25Z"/></svg>
+      <div class="loader-symbol">
+        <svg class="loader-emblem" viewBox="0 0 200 200" fill="none"><g id="loader-wireframe"><path d="M100 12 185 62v76l-85 50-85-50V62Z M15 62l85 50 85-50 M100 112v76 M100 12v100 M15 138l85-50 85 50 M58 37v76l85 50 M143 37v76l-85 50"/><path d="m58 87 42-25 43 25-43 25Z"/></g></svg>
+        <svg class="loader-echo loader-echo-a" viewBox="0 0 200 200" aria-hidden="true"><use href="#loader-wireframe"/></svg>
+        <svg class="loader-echo loader-echo-b" viewBox="0 0 200 200" aria-hidden="true"><use href="#loader-wireframe"/></svg>
+      </div>
       <span class="loader-year">1983</span>
     </div>
     <div class="loader-bottom mono"><span class="loader-log">INDEXING // THE FIRST PIXELS</span><span class="loader-count">000%</span></div>
   </div>
   <div class="ambient-fallback" aria-hidden="true"></div><canvas id="ambient-canvas" aria-hidden="true"></canvas>
   <div class="paper-grain" aria-hidden="true"></div>
+  <canvas id="cursor-fog" aria-hidden="true"></canvas>
   <div class="cursor-dot" aria-hidden="true"></div>
   <div class="cursor-ring" aria-hidden="true"><span></span></div>
 
@@ -49,6 +64,7 @@
       <a href="#renaissance" class="magnetic" data-era="renaissance"><span class="nav-dot"></span>NOW</a>
     </nav>
     <div class="header-tools">
+      <button id="theme-toggle" class="theme-toggle magnetic" type="button" aria-label="Dark mode" aria-pressed="false" title="Switch to dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="theme-sun"><circle cx="12" cy="12" r="4"/><path d="M12 1.5v2M12 20.5v2M1.5 12h2M20.5 12h2M4.6 4.6 6 6M18 18l1.4 1.4M4.6 19.4 6 18M18 6l1.4-1.4"/></g><path class="theme-moon" d="M20.7 14.2A9 9 0 0 1 9.8 3.3a9 9 0 1 0 10.9 10.9Z"/></svg><span class="theme-label mono">LIGHT</span></button>
       <button class="sound-toggle magnetic" aria-label="Enable ambient sound" aria-pressed="false"><span class="equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="sound-label mono">SOUND OFF</span></button>
       <span class="scroll-progress mono" aria-label="Exhibition progress">000%</span>
       <button class="mobile-menu-toggle" aria-expanded="false" aria-controls="mobile-nav" aria-label="Open exhibition navigation"><span></span><span></span></button>
@@ -64,35 +80,76 @@
 
   <main id="main">
     <section id="entrance" class="hero section-shell" aria-labelledby="hero-title">
-      <div class="hero-kicker mono"><span><i class="status-dot"></i> AN INDEPENDENT DIGITAL EXHIBITION</span><span>FRANCE, 1983—PRESENT</span></div>
+      <div class="hero-kicker mono"><span><i class="status-dot"></i> AN INDEPENDENT DIGITAL EXHIBITION</span><span>FRANCE, 1970s—PRESENT</span></div>
       <div class="hero-title-row">
-        <h1 id="hero-title" aria-label="La French Touch: Four Decades of Interactive Avant-Garde."><span class="hero-line"><span class="hero-line-text">La French</span><span class="hero-line-wipe" aria-hidden="true"></span></span><span class="hero-line"><span class="hero-line-text"><em>Touch.</em><span class="hero-asterisk" aria-hidden="true">✳</span></span><span class="hero-line-wipe" aria-hidden="true"></span></span></h1>
+        <h1 id="hero-title" aria-label="La French Touch: Five Decades of Interactive Avant-Garde."><span class="hero-line"><span class="hero-line-text">La French</span><span class="hero-line-wipe" aria-hidden="true"></span></span><span class="hero-line"><span class="hero-line-text"><em>Touch.</em><span class="hero-asterisk" aria-hidden="true">✳</span></span><span class="hero-line-wipe" aria-hidden="true"></span></span></h1>
         <div class="hero-side-note mono"><span>ART.<br>CODE.<br>CULTURE.</span><span class="vertical-line"></span><span>48°51′24″N<br>2°21′08″E</span></div>
       </div>
       <div class="hero-stage">
         <div class="hero-intro">
           <span class="eyebrow mono">L’EXCEPTION CULTURELLE</span>
-          <p class="hero-deck">Four decades of<br>interactive <em>avant-garde.</em></p>
+          <p class="hero-deck">Five decades of<br>interactive <em>avant-garde.</em></p>
           <p class="body-small">From a bedroom’s first lines of code to worlds that move millions. Discover the imagination, the audacity, and the unmistakable art of playing French.</p>
-          <a href="#pioneers" class="text-link magnetic">Enter the exhibition <span>↘</span></a>
+          <a href="#origins" class="text-link magnetic">Enter the exhibition <span>↘</span></a>
         </div>
         <figure class="hero-artifact tilt-card" data-speed="0.14">
-          <button class="hero-image-wrap image-distort" data-inspect="another-world" data-cursor="explore" aria-label="Explore Another World, Éric Chahi, 1991">
-            <img src="assets/another-world-alt.jpg" alt="A lone traveller beneath twin moons in the polygonal alien landscape of Another World" width="1920" height="1080" fetchpriority="high">
+          <button class="hero-image-wrap image-distort hero-ascii" data-inspect="another-world" data-cursor="explore" aria-label="Explore Another World — an animated ASCII tribute">
+            <canvas id="hero-ascii-canvas" aria-hidden="true"></canvas>
+            <pre class="ascii-fallback" aria-hidden="true">                     .                           +          
+            +              .-::::::::--.                    
+                       .:ifLCG088GGCLft1i:.                   
+                     :iLCG88@@##@@880GCLf1;.                
+             .      ;fCG8@@#8Gt1tfG88#@80Cf1:               
+                  .1CG8@#8Gf;,. .:1CG8@@80Cf;.             
+               ___iG8@@8Ct,      .;fG88@@80Ct1:___          
+        __..--===+fC88Gf;.   .      .ifG88@@0Cf+===--..__    
+    .--==+ifLCG08@@@@G1:.   .:;.       :1fG80@@880GCLfi+==-. 
+     '--..__--=+1CG8@Gf1;,,;fGC1;,..,:1CG8@@8GC1+=--__..--'
+             ---=+fCG8@8GCLf1ifLCG088@@8GCf+=---            
+                   :1fCG8@@@880GG88@@8GCf1;.                
+                     .;1fLCG08888GCLf1;:.                  
+                .       .-::;ii1ii;::-.          .         
+                                                            
+       .       __..---~--..__           __..----..__         
+   __..----..-'..,,;;ii1tfLCG8GCLf1ii;;,,..  ..---..__       
+ --..,,;i1tfLCG8@@@8GCft1i;:,.  ..,:;i1tfLCG8GCLfi;,,..-- 
+ ..__..,,;i1fLCG8GCLf1;:,.   ..,:;i1fLCG8@@@8GCf1;,,..__..
+   ..__..,,;ifLCG8@@8GCf1i;,,.  ..,:;i1fLCG8GCf1;,,..__.. 
+ ..__..,,;i1fLCG8GCLf1;:,.   ..,:;i1fLCG8@@@8GCf1;,,..__..</pre>
+            <span class="ascii-caption mono" aria-hidden="true">A WORLD, WRITTEN IN LIGHT</span>
             <span class="image-crosshair crosshair-tl" aria-hidden="true"></span><span class="image-crosshair crosshair-br" aria-hidden="true"></span>
-            <span class="image-topline mono">FIG. 001 <span>THE ART OF ELSEWHERE</span></span>
+            <span class="image-topline mono">FIG. 001 <span>ASCII / WORLD STUDY</span></span>
             <span class="artifact-open" aria-hidden="true">↗</span>
             <span class="specular" aria-hidden="true"></span>
           </button>
-          <figcaption class="mono"><span>ANOTHER WORLD <span class="caption-muted">/ ÉRIC CHAHI</span></span><span>1991 ↗</span></figcaption>
+          <figcaption class="mono"><span>ANOTHER WORLD <span class="caption-muted">/ ASCII TRIBUTE</span></span><span>1991 ↗</span></figcaption>
         </figure>
       </div>
-      <div class="hero-bottom"><a href="#pioneers" class="scroll-invitation magnetic"><svg class="compass" viewBox="0 0 50 50" fill="none" aria-hidden="true"><circle cx="25" cy="25" r="23"/><path d="M25 9v32M9 25h32m-22 7 6 9 6-9"/></svg><span class="mono">SCROLL TO<br>TRAVEL THROUGH TIME</span></a><span class="mono hero-bottom-center">A FRENCH PERSPECTIVE. A UNIVERSAL LANGUAGE.</span><span class="mono">01 — 06</span></div>
+      <div class="hero-bottom"><a href="#origins" class="scroll-invitation magnetic"><svg class="compass" viewBox="0 0 50 50" fill="none" aria-hidden="true"><circle cx="25" cy="25" r="23"/><path d="M25 9v32M9 25h32m-22 7 6 9 6-9"/></svg><span class="mono">SCROLL TO<br>TRAVEL THROUGH TIME</span></a><span class="mono hero-bottom-center">A FRENCH PERSPECTIVE. A UNIVERSAL LANGUAGE.</span><span class="mono">1970s — NOW</span></div>
     </section>
 
     <section class="curatorial-note section-shell section-rule" aria-labelledby="note-title">
       <div class="section-label mono"><span>THE CURATOR’S NOTE</span><span>↓</span></div>
       <div class="note-layout"><span class="note-index mono">[ MANIFESTO ]</span><div><h2 id="note-title" class="reveal">A different way<br>to <em>imagine.</em></h2><p class="reveal">Some games ask you to win.<br>Others change the way you see.</p></div><div class="note-copy"><p class="reveal">There has never been just one French style. There is, however, a restless impulse: to borrow from cinema, illustration, architecture, and music—and make something that could only exist through play.</p><p class="reveal">This is a journey through that impulse. From 8-bit experiments to painted worlds, meet the people who made the screen a canvas.</p><span class="small-seal mono">UNE HISTOIRE<br>À JOUER <span>↗</span></span></div></div>
+    </section>
+
+
+    <section id="origins" class="history-origins section-shell section-rule" aria-labelledby="origins-title">
+      <div class="section-label mono"><span>PROLOGUE / BEFORE THE FIRST STUDIOS</span><span>1970s—1985</span></div>
+      <div class="history-chapter-heading"><h2 id="origins-title" class="reveal">Before a signature,<br><em>a screen.</em></h2><p class="reveal">The story begins with access. To a machine. To a language. To the possibility of making something yourself.</p></div>
+      <div class="origins-layout">
+        <div class="origins-diagram" aria-hidden="true">
+          <svg viewBox="0 0 500 510" fill="none"><g class="origins-orbits"><ellipse cx="250" cy="240" rx="212" ry="166"/><ellipse cx="250" cy="240" rx="166" ry="212"/><ellipse cx="250" cy="240" rx="112" ry="150"/><path d="M18 240h464M250 10v460"/></g><g class="origins-screen"><path d="M137 145h226v154H137zM151 160h198v125H151zM218 299v27h64v-27M186 326h128M170 351h160l23 39H147z"/><path d="m213 203 20 17-20 17m38 0h31"/></g><circle cx="250" cy="240" r="228" stroke-dasharray="2 12"/><circle cx="38" cy="240" r="5" fill="currentColor"/><circle cx="250" cy="28" r="5" fill="currentColor"/></svg>
+          <span class="mono">INSERT A COIN.<br>LOAD A CASSETTE.<br>WRITE A FIRST LINE.</span>
+        </div>
+        <div class="origins-stories">
+          <article class="history-origin-entry"><span class="history-date">1970s</span><div><span class="mono rust">THE SCREEN ENTERS EVERYDAY LIFE</span><h3 class="reveal">A new kind<br>of <em>public space.</em></h3><p class="reveal">Arcade machines and early home consoles introduce a new relationship with the moving image: the spectator can act. In France, as elsewhere, a culture of playing takes shape before a recognisable local production industry.</p><button type="button" class="text-link history-read magnetic" data-inspect="early-play" data-cursor="read" aria-label="Read the archive: Before the bedroom studio">Read the archive <span aria-hidden="true">↗</span></button></div></article>
+          <article class="history-origin-entry"><span class="history-date">1980s</span><div><span class="mono rust">FROM CONSUMER TO CREATOR</span><h3 class="reveal">The keyboard<br>changes <em>the equation.</em></h3><p class="reveal">A home computer can run a game and make one. Shops, importers, specialist magazines, and hobbyists connect the two activities. The cassette travels through a social network long before the web: discovery, advice, distribution, and the first independent publishers.</p><p class="history-caption">Historical lens / Colin Sidre’s research places these often overlooked intermediaries at the centre of the early French scene.</p></div></article>
+          <article class="history-origin-entry"><span class="history-date">1985</span><div><span class="mono rust">INFORMATIQUE POUR TOUS</span><h3 class="reveal">A computer becomes<br>a <em>public question.</em></h3><p class="reveal">Presented on 25 January 1985, the national plan brings equipment, teacher training, and public access into the same conversation. It is part of the context in which the Thomson generation encounters computing—alongside the home, the shop, and the games magazine.</p><button type="button" class="text-link history-read magnetic" data-inspect="informatique-pour-tous" data-cursor="read" aria-label="Read the archive: Informatique pour tous">Read the archive <span aria-hidden="true">↗</span></button></div></article>
+        </div>
+      </div>
+      <nav class="history-index" aria-label="Explore the history by chapter"><span class="mono">CHOOSE A CHAPTER</span><a href="#pioneers"><b>01</b><span>The first studios</span><small>1980s ↘</small></a><a href="#auteurs"><b>02</b><span>Auteurs & CD-ROMs</span><small>1990s ↘</small></a><a href="#worlds"><b>03</b><span>Worlds & communities</span><small>2000—2015 ↘</small></a><a href="#renaissance"><b>04</b><span>Independent voices</span><small>2016—NOW ↘</small></a><a href="#living-archive"><b>05</b><span>Keeping the memory</span><small>THE CONTEXT ↘</small></a></nav>
+      <p class="history-footnote"><a class="history-source" href="https://www.bnf.fr/fr/la-memoire-des-jeux-video" target="_blank" rel="noopener noreferrer">BnF / the emergence of the medium <span aria-hidden="true">↗</span></a><a class="history-source" href="https://www.kinephanos.ca/Revue_files/2015_Sidre_Fr.pdf" target="_blank" rel="noopener noreferrer">Colin Sidre / the early industry <span aria-hidden="true">↗</span></a></p>
     </section>
 
     <section id="pioneers" class="pioneers section-shell section-rule" aria-labelledby="pioneers-title">
@@ -106,6 +163,15 @@
           <article class="timeline-entry" data-timeline-year="1986"><span class="timeline-marker" aria-hidden="true"></span><span class="mono rust">1985—1989 // FROM IMPULSE TO INDUSTRY</span><h3 class="reveal">The map<br><em>gets bigger.</em></h3><p class="reveal">Titus is founded in 1985. In Brittany, the Guillemot brothers establish Ubisoft in 1986. The creative scene grows beyond individual bedrooms into a network of studios, publishers, and new possibilities.</p><div class="archival-tags"><button class="magnetic" data-inspect="titus" data-cursor="read">TITUS / 1985 <span>↗</span></button><button class="magnetic" data-inspect="ubisoft" data-cursor="read">UBISOFT / 1986 <span>↗</span></button></div></article>
         </div>
       </div>
+
+      <section class="history-voices history-inset" aria-labelledby="voices-title">
+        <div class="history-inset-heading"><span class="mono rust">COUNTERPOINT / 1987—1988</span><h3 id="voices-title" class="reveal">Other worlds.<br><em>Other points of view.</em></h3><p class="reveal">The early adventure game is already more than a technical experiment. It can carry a particular history—or make understanding another being the adventure itself.</p></div>
+        <div class="history-voice-pair">
+          <article><div class="history-entry-top mono"><span>01 / MARTINIQUE</span><time>1987</time></div><h4 class="reveal"><em>Méwilo.</em></h4><p class="history-byline">Muriel Tramis / Coktel Vision</p><p class="reveal">With Patrick Chamoiseau and Philippe Truca, Tramis creates an investigation rooted in Saint-Pierre in 1902. Caribbean culture and historical memory enter the game’s imaginative world. The geography of French production is wider than metropolitan France.</p><button type="button" class="text-link history-read magnetic" data-inspect="mewilo" data-cursor="read" aria-label="Read the archive: Méwilo">Read the archive <span aria-hidden="true">↗</span></button></article>
+          <article><div class="history-entry-top mono"><span>02 / AN ALIEN LANGUAGE</span><time>1988</time></div><h4 class="reveal"><em>Captain Blood.</em></h4><p class="history-byline">ERE Informatique / Exxos</p><p class="reveal">An exploration game asks the player to communicate with alien inhabitants. The encounter is strange, and understanding is part of the task. A different ambition emerges: make the unfamiliar a language to learn.</p><button type="button" class="text-link history-read magnetic" data-inspect="captain-blood" data-cursor="read" aria-label="Read the archive: Captain Blood">Read the archive <span aria-hidden="true">↗</span></button></article>
+        </div>
+      </section>
+
       <section id="studio-growth" class="chronicle" aria-labelledby="chronicle-title">
         <div class="chronicle-stage">
           <div class="chronicle-panel">
@@ -161,14 +227,73 @@
         <article class="exhibit-card tilt-card"><div class="exhibit-top mono"><span>EXHIBIT 003</span><span>1992</span></div><button class="exhibit-image image-distort" data-inspect="flashback" data-cursor="explore" aria-label="Inspect Flashback"><img src="assets/flashback.jpg" width="1920" height="1080" loading="lazy" alt="Flashback: a rotoscoped science-fiction adventure"><span class="specular"></span><span class="image-caption mono">EVERY GESTURE TELLS A STORY</span></button><div class="exhibit-bottom"><div><h3><em>Flashback</em></h3><span class="mono">PAUL CUISSET / DELPHINE SOFTWARE</span></div><button class="round-button magnetic" data-inspect="flashback" aria-label="Inspect Flashback">↗</button></div><p>A lost memory, a living city, and animation with the weight and rhythm of cinema.</p></article>
         <article class="exhibit-card tilt-card"><div class="exhibit-top mono"><span>EXHIBIT 004</span><span>1992</span></div><button class="exhibit-image image-distort" data-inspect="dune" data-cursor="explore" aria-label="Inspect Dune"><img class="pixel-art" src="assets/dune.gif" width="320" height="200" loading="lazy" alt="Dune’s illustrated desert world, a 1992 archival game screenshot"><span class="specular"></span><span class="image-caption mono">A DESERT. A DREAM. A SOUNDTRACK.</span></button><div class="exhibit-bottom"><div><h3><em>Dune</em></h3><span class="mono">CRYO INTERACTIVE / VIRGIN GAMES</span></div><button class="round-button magnetic" data-inspect="dune" aria-label="Inspect Dune">↗</button></div><p>Adventure meets strategy, carried across Arrakis by an otherworldly electronic score.</p></article>
         <article class="exhibit-card tilt-card"><div class="exhibit-top mono"><span>EXHIBIT 005</span><span>1995</span></div><button class="exhibit-image image-distort" data-inspect="rayman" data-cursor="explore" aria-label="Inspect Rayman"><img src="assets/rayman.jpg" width="1200" height="675" loading="lazy" alt="Rayman: hand-crafted, colourful 2D fantasy worlds"><span class="specular"></span><span class="image-caption mono">THE UNREASONABLE JOY OF IMAGINATION</span></button><div class="exhibit-bottom"><div><h3><em>Rayman</em></h3><span class="mono">MICHEL ANCEL / UBISOFT</span></div><button class="round-button magnetic" data-inspect="rayman" aria-label="Inspect Rayman">↗</button></div><p>Painterly landscapes and an unlikely hero give French animation a global stage.</p></article>
-      </div></div><div class="gallery-bottom section-shell mono"><span>SCROLL TO WALK THROUGH THE GALLERY</span><div class="gallery-progress"><span></span></div><a href="#worlds" class="magnetic">NEXT ROOM ↘</a></div></div>
+      </div></div><div class="gallery-bottom section-shell mono"><span>SCROLL TO WALK THROUGH THE GALLERY</span><div class="gallery-progress"><span></span></div><a href="#cd-rom" class="magnetic">NEXT ROOM ↘</a></div></div>
+    </section>
+
+
+    <section id="cd-rom" class="history-disc section-shell section-rule" aria-labelledby="disc-title">
+      <div class="section-label mono"><span>INTERLUDE / THE MULTIMEDIA YEARS</span><span>1994—1997</span></div>
+      <div class="history-chapter-heading"><h2 id="disc-title" class="reveal">The CD-ROM opens<br><em>another room.</em></h2><p class="reveal">Illustration, voices, music, and reconstructed places become material for an adventure. The decade’s history unfolds beyond a single genre.</p></div>
+      <div class="disc-layout"><div class="disc-object"><div class="archive-disc" aria-hidden="true"><span class="disc-label mono">L’ART DU JEU<br>INTERACTIVE ARCHIVE<br>VOL. 02 / 1990s</span><span class="disc-hole"></span></div><p class="history-caption">A change in medium, many possible directions. The cultural adventure, the imagined civilisation, and the small hero in a large world.</p><span class="mono rust">AN ORIGINAL EDITORIAL STUDY / NOT A GAME DISC</span></div>
+        <div class="disc-files">
+          <article class="history-file"><time class="mono rust">1994</time><div><h3 class="reveal">Little Big <em>Adventure.</em></h3><span class="history-byline">Adeline Software</span><p class="reveal">Twinsen’s journey brings together a distinctive viewpoint, a whimsical world, and the menace of Dr FunFrock. The team behind Little Big Adventure shows that the move into three dimensions can serve an individual visual imagination.</p><button type="button" class="text-link history-read magnetic" data-inspect="little-big-adventure" data-cursor="read" aria-label="Read the archive: Little Big Adventure">Read the archive <span aria-hidden="true">↗</span></button></div></article>
+          <article class="history-file"><time class="mono rust">1996</time><div><h3 class="reveal"><em>Versailles</em> 1685.</h3><span class="history-byline">Cryo / Canal+ Multimedia / RMN</span><p class="reveal">A collaboration between game creators and cultural institutions turns the palace into an interactive investigation. Historical knowledge and a mystery share the same space; the heritage site becomes somewhere to explore.</p><button type="button" class="text-link history-read magnetic" data-inspect="versailles" data-cursor="read" aria-label="Read the archive: Versailles 1685">Read the archive <span aria-hidden="true">↗</span></button></div></article>
+          <article class="history-file"><time class="mono rust">1997</time><div><h3 class="reveal"><em>Atlantis.</em></h3><span class="history-byline">Cryo Interactive</span><p class="reveal">A first-person adventure builds a lost civilisation through environments, voices, puzzles, and music. Following Dune, Cryo continues to test how an imagined world can be both an audiovisual work and a place to inhabit.</p><button type="button" class="text-link history-read magnetic" data-inspect="atlantis" data-cursor="read" aria-label="Read the archive: Atlantis: The Lost Tales">Read the archive <span aria-hidden="true">↗</span></button></div></article>
+        </div>
+      </div>
     </section>
 
     <section id="worlds" class="worlds section-shell section-rule" aria-labelledby="worlds-title">
       <div class="section-label mono"><span>03 / WORLDS WITHOUT LIMITS</span><span>2000—2015</span></div>
       <div class="worlds-intro"><div class="worlds-heading"><span class="eyebrow mono">FROM AUTHORSHIP TO ARCHITECTURE</span><h2 id="worlds-title" class="reveal">The world<br>is the <em>work.</em></h2><p class="reveal">The canvas expands. So does the ambition.</p><p class="body-small reveal">Ubisoft turns open worlds into a global language. Arkane builds places that answer back. Quantic Dream explores interactive cinema; DON’T NOD makes memory, adolescence, and consequence playable.</p></div><figure class="worlds-image" data-speed="0.1"><button class="image-distort" data-inspect="dishonored" data-cursor="explore" aria-label="Inspect Dishonored"><img src="assets/dishonored.jpg" alt="The intricate, industrial architectural world of Dishonored" width="1920" height="1080" loading="lazy"><span class="artifact-open">↗</span></button><figcaption class="mono"><span>DISHONORED / ARKANE STUDIOS</span><span>2012</span></figcaption></figure></div>
       <div class="studio-index"><span class="mono">FOUR APPROACHES</span><button data-inspect="ubisoft" class="magnetic">Ubisoft <span>Open worlds ↗</span></button><button data-inspect="dishonored" class="magnetic">Arkane <span>Immersive systems ↗</span></button><button data-inspect="quantic-dream" class="magnetic">Quantic Dream <span>Interactive cinema ↗</span></button><button data-inspect="life-is-strange" class="magnetic">DON’T NOD <span>Intimate stories ↗</span></button></div>
-      <div class="touch-diagram"><div class="diagram-heading"><span class="mono">CURATORIAL STUDY / 002</span><h3>Is there a<br><em>French signature?</em></h3><p class="body-small">A set of resonances, not a rulebook. Select a connection to explore the ideas that travel between these works.</p><span class="mono rust">INTERPRETIVE MAP / NO QUANTITATIVE RANKING</span></div><div class="diagram-visual"><svg viewBox="0 0 400 340" aria-hidden="true"><g class="radar-grid"><path d="m200 35 145 135-145 135L55 170Z M200 80l96 90-96 90-96-90Z M200 125l48 45-48 45-48-45Z M200 35v270M55 170h290"/></g><path class="radar-shape" d="m200 54 130 116-130 113L76 170Z"/><circle cx="200" cy="170" r="5"/><g class="radar-nodes"><circle cx="200" cy="54" r="7"/><circle cx="330" cy="170" r="7"/><circle cx="200" cy="283" r="7"/><circle cx="76" cy="170" r="7"/></g></svg><div class="diagram-tabs" role="group" aria-label="French Touch themes"><button class="diagram-tab selected" data-theme="visual" aria-pressed="true">01 / THE DRAWN IMAGE</button><button class="diagram-tab" data-theme="world" aria-pressed="false">02 / LIVING SYSTEMS</button><button class="diagram-tab" data-theme="music" aria-pressed="false">03 / ELECTRONIC DREAMS</button><button class="diagram-tab" data-theme="mood" aria-pressed="false">04 / BEAUTIFUL MELANCHOLY</button></div></div><div class="diagram-commentary" aria-live="polite"><span class="mono diagram-number">01 / VISUAL CULTURE</span><h4 class="diagram-title">Beyond the<br><em>drawn panel.</em></h4><p class="diagram-copy">Bande dessinée offers a way to think in striking compositions, expressive silhouettes, and worlds suggested beyond the frame. Another World and Rayman take radically different routes through that visual imagination.</p><span class="mono diagram-reference">SEE ALSO / ANOTHER WORLD, RAYMAN</span></div></div>
+
+      <section id="connected-worlds" class="history-networks history-inset" aria-labelledby="networks-title">
+        <div class="history-inset-heading"><span class="mono rust">2002—2012 / A WIDER FIELD</span><h3 id="networks-title" class="reveal">Many ways<br>to build <em>a world.</em></h3><p class="reveal">The adventure continues. Racing becomes a construction kit. An online universe grows beyond its launch. Strategy makes the rules themselves a form of world-building.</p></div>
+        <div class="network-list">
+          <article class="network-entry"><time>2002</time><div><span class="mono">MICROIDS / BENOÎT SOKAL</span><h4 class="reveal"><em>Syberia.</em></h4><p class="reveal">Kate Walker’s journey carries the adventure tradition into a new decade. Sokal’s composed environments, mechanical imagination, and attention to atmosphere sustain a different tempo from the expanding action world.</p><button type="button" class="text-link history-read magnetic" data-inspect="syberia" data-cursor="read" aria-label="Read the archive: Syberia">Read the archive <span aria-hidden="true">↗</span></button></div><span class="network-category mono">THE AUTHORED<br>JOURNEY</span></article>
+          <article class="network-entry"><time>2003</time><div><span class="mono">UBISOFT MONTPELLIER</span><h4 class="reveal">Beyond <em>Good & Evil.</em></h4><p class="reveal">Jade’s investigation combines action with a journalist’s search for evidence. The game complicates the divide between a major publisher and a distinctive creative voice: a studio inside a global organisation can propose its own way of seeing.</p><button type="button" class="text-link history-read magnetic" data-inspect="beyond-good-and-evil" data-cursor="read" aria-label="Read the archive: Beyond Good &amp; Evil">Read the archive <span aria-hidden="true">↗</span></button></div><span class="network-category mono">THE WORLD<br>AS EVIDENCE</span></article>
+          <article class="network-entry"><time>2003</time><div><span class="mono">NADEO</span><h4 class="reveal"><em>Trackmania.</em></h4><p class="reveal">The player does more than drive. Building and sharing tracks extends authorship into the community. A racing game becomes a renewable collection of routes, records, and experiments made by the people who play it.</p><button type="button" class="text-link history-read magnetic" data-inspect="trackmania" data-cursor="read" aria-label="Read the archive: Trackmania">Read the archive <span aria-hidden="true">↗</span></button></div><span class="network-category mono">THE PLAYER<br>AS DESIGNER</span></article>
+          <article class="network-entry"><time>2004</time><div><span class="mono">ANKAMA / ROUBAIX</span><h4 class="reveal"><em>DOFUS.</em></h4><p class="reveal">The World of Twelve becomes a place to return to together. Ankama’s online role-playing game connects with a broader universe of comics and animation, while its continuing community makes the launch date a beginning rather than an ending.</p><button type="button" class="text-link history-read magnetic" data-inspect="dofus" data-cursor="read" aria-label="Read the archive: DOFUS">Read the archive <span aria-hidden="true">↗</span></button></div><span class="network-category mono">THE SHARED<br>UNIVERSE</span></article>
+          <article class="network-entry"><time>2012</time><div><span class="mono">AMPLITUDE STUDIOS</span><h4 class="reveal">Endless <em>Space.</em></h4><p class="reveal">Turn-based 4X strategy expresses a galaxy through systems and choices. Exploration and the development of a civilisation offer another scale of imagination—one in which the world is also the relationship between its rules.</p><button type="button" class="text-link history-read magnetic" data-inspect="endless-space" data-cursor="read" aria-label="Read the archive: Endless Space">Read the archive <span aria-hidden="true">↗</span></button></div><span class="network-category mono">THE SYSTEM<br>AS WORLD</span></article>
+        </div>
+      </section>
+
+      <section id="french-signature" class="signature-installation" aria-labelledby="signature-title">
+        <div class="signature-stage">
+          <header class="signature-header">
+            <div><span class="mono rust">CURATORIAL STUDY / 002</span><h3 id="signature-title">A signature <em>in motion.</em></h3></div>
+            <p>Four resonances. One restless imagination.<br>A living study of <em>La French Touch.</em></p>
+          </header>
+          <div class="signature-main">
+            <figure class="signature-art" aria-label="A layered kite sculpture that folds and transforms through four French Touch themes">
+              <div class="signature-art-meta mono"><span>FIG. 002 / FORM &amp; FEELING</span><span class="signature-form-index">01 / 04</span></div>
+              <svg class="signature-fallback" viewBox="0 0 640 640" aria-hidden="true"><g class="signature-guide"><path d="M320 32V608M32 320H608"/><path d="M320 48 588 320 320 592 52 320Z M320 104 532 320 320 536 108 320Z M320 160 476 320 320 480 164 320Z M320 216 420 320 320 424 220 320Z"/></g><g class="signature-fallback-form"><path d="M320 64 560 320 320 576 80 320Z"/><path d="M320 64Q480 320 320 576Q160 320 320 64Z M80 320Q320 130 560 320Q320 510 80 320Z"/></g></svg>
+              <canvas class="signature-canvas" aria-hidden="true"></canvas>
+              <figcaption class="signature-art-caption"><span class="signature-form-name">The drawn image</span><span class="mono">A CONTINUOUS TRANSFORMATION<br>AN INTERPRETIVE STUDY, NOT A RANKING</span></figcaption>
+            </figure>
+            <article class="signature-story" aria-labelledby="signature-story-title">
+              <div class="signature-story-content">
+                <span class="mono signature-number">01 / VISUAL CULTURE</span>
+                <h4 id="signature-story-title">Beyond the<br><em>drawn panel.</em></h4>
+                <p class="signature-copy">Bande dessinée offers a way to think in striking compositions, expressive silhouettes, and worlds suggested beyond the frame. Another World and Rayman take radically different routes through that visual imagination.</p>
+                <div class="signature-principle"><span class="mono">THE RESONANCE</span><p>Composition becomes a language. A silhouette can tell a story before a word is spoken.</p></div>
+                <div class="signature-works"><span class="mono">IN THE COLLECTION</span><div><button class="signature-work" data-inspect="another-world"><span>Another World</span><span aria-hidden="true">↗</span></button><button class="signature-work" data-inspect="rayman"><span>Rayman</span><span aria-hidden="true">↗</span></button></div></div>
+              </div>
+            </article>
+          </div>
+          <footer class="signature-footer">
+            <div class="signature-tabs" role="group" aria-label="French Touch chapters">
+              <button class="signature-tab is-current" data-signature-theme="0" aria-pressed="true" aria-controls="signature-story-title"><span class="mono">01</span><span>The drawn image</span><i aria-hidden="true"></i></button>
+              <button class="signature-tab" data-signature-theme="1" aria-pressed="false" aria-controls="signature-story-title"><span class="mono">02</span><span>Living systems</span><i aria-hidden="true"></i></button>
+              <button class="signature-tab" data-signature-theme="2" aria-pressed="false" aria-controls="signature-story-title"><span class="mono">03</span><span>Electronic dreams</span><i aria-hidden="true"></i></button>
+              <button class="signature-tab" data-signature-theme="3" aria-pressed="false" aria-controls="signature-story-title"><span class="mono">04</span><span>Beautiful melancholy</span><i aria-hidden="true"></i></button>
+            </div>
+            <div class="signature-footer-note mono"><span class="signature-instruction">SCROLL TO TRANSFORM / SELECT TO EXPLORE</span><span>FOUR IDEAS / INFINITE EXPRESSIONS</span><a href="#renaissance">NEXT ROOM ↘</a></div>
+          </footer>
+          <p class="signature-live sr-only" role="status" aria-live="polite"></p>
+        </div>
+      </section>
     </section>
 
     <section id="renaissance" class="renaissance section-shell section-rule" aria-labelledby="renaissance-title">
@@ -181,7 +306,29 @@
         <div role="row"><div role="cell" aria-colspan="4"><button class="ledger-row" data-preview="clair-obscur" data-inspect="clair-obscur" data-cursor="explore"><span class="ledger-index mono">04 <b>2025</b></span><span class="ledger-title">Clair <em>Obscur</em><small class="mono">EXPEDITION 33</small></span><span class="ledger-studio">Sandfall Interactive<small>Montpellier, France</small></span><span class="ledger-arrow" aria-hidden="true">↗</span><img class="ledger-mobile-image" src="assets/clair-obscur.jpg" alt="" width="1920" height="1080" loading="lazy"></button></div></div>
       </div>
       <div class="ledger-note mono"><span>FOUR WORKS FROM A MUCH LARGER CONSTELLATION</span><span>SELECT A WORK TO READ ITS STORY ↗</span></div>
+
+      <section class="history-independents history-inset" aria-labelledby="independents-title">
+        <div class="history-inset-heading"><span class="mono rust">THREE MORE VOICES / 2016—2023</span><h3 id="independents-title" class="reveal">Independence<br>has many <em>accents.</em></h3><p class="reveal">A concentrated duel. A body learning through repetition. A language slowly understood. Smaller productions can make a single idea feel like an entire world.</p></div>
+        <div class="independent-files">
+          <article><span class="independent-number" aria-hidden="true">01</span><div class="history-entry-top mono"><time>2016</time><span>THE GAME BAKERS</span></div><h4 class="reveal"><em>Furi.</em></h4><p class="reveal">Sword fighting and twin-stick shooting become a sequence of exacting encounters. Takashi Okazaki’s character designs and an electronic soundtrack turn concentration, rhythm, and resolve into a vivid collaborative work.</p><button type="button" class="text-link history-read magnetic" data-inspect="furi" data-cursor="read" aria-label="Read the archive: Furi">Read the archive <span aria-hidden="true">↗</span></button></article>
+          <article><span class="independent-number" aria-hidden="true">02</span><div class="history-entry-top mono"><time>2022</time><span>SLOCLAP / PARIS</span></div><h4 class="reveal"><em>Sifu.</em></h4><p class="reveal">A Paris studio builds an action game around martial-arts combat and practice. Its international references make an essential point: a history of where games are made is also a history of influences crossing borders.</p><button type="button" class="text-link history-read magnetic" data-inspect="sifu" data-cursor="read" aria-label="Read the archive: Sifu">Read the archive <span aria-hidden="true">↗</span></button></article>
+          <article><span class="independent-number" aria-hidden="true">03</span><div class="history-entry-top mono"><time>2023</time><span>RUNDISC / TOULOUSE</span></div><h4 class="reveal">Chants of <em>Sennaar.</em></h4><p class="reveal">In a Babel-inspired tower, deciphering languages is the route forward. Observation and interpretation bring divided groups into focus. Understanding another person becomes the adventure’s central action.</p><button type="button" class="text-link history-read magnetic" data-inspect="chants-of-sennaar" data-cursor="read" aria-label="Read the archive: Chants of Sennaar">Read the archive <span aria-hidden="true">↗</span></button></article>
+        </div>
+      </section>
+
       <blockquote class="renaissance-quote"><p class="quote-text reveal">The technology changes.<br>The need to <em>create</em> remains.</p><cite class="quote-attribution mono">L’ART DU JEU / A CURATORIAL REFLECTION</cite></blockquote>
+    </section>
+
+
+    <section id="living-archive" class="history-memory section-shell section-rule" aria-labelledby="memory-title">
+      <div class="section-label mono"><span>CONTEXT / THE PEOPLE BEHIND THE SCREEN</span><span>PRESERVE · TEACH · SUPPORT</span></div>
+      <div class="memory-intro"><h2 id="memory-title" class="reveal">A culture needs<br><em>a memory.</em></h2><div><p class="reveal">Games do not survive through nostalgia alone. They need archives, skills passed between generations, and the conditions in which new work can be made.</p><p class="history-caption">Authorship is collective. Programmers, artists, writers, designers, composers, testers, publishers, and players all belong to this history. “La French Touch” is a lens through which to look, not a boundary around who can contribute.</p></div></div>
+      <div class="memory-columns">
+        <article><span class="memory-year">1992<span> / 1993</span></span><span class="mono rust">01 / KEEP THE WORK</span><h3 class="reveal">The game enters<br><em>the archive.</em></h3><p class="reveal">France extends legal deposit to electronic documents through the 1992 law and its 1993 implementing decree. The BnF’s game collections preserve software across changing physical formats, together with documentation that helps future researchers understand it. A cassette or cartridge becomes evidence of a culture, as well as a way to play.</p><a class="history-source" href="https://www.bnf.fr/fr/les-jeux-video-la-bnf" target="_blank" rel="noopener noreferrer">BnF / games in the collections <span aria-hidden="true">↗</span></a></article>
+        <article><span class="memory-year">2001<span> / 2004</span></span><span class="mono rust">02 / PASS ON THE CRAFT</span><h3 class="reveal">Making games<br>becomes <em>a course.</em></h3><p class="reveal">The programme that leads to Cnam-Enjmin begins as a DESS in 2001 and becomes a master’s degree in 2004. Its history links the Cnam, the universities of Poitiers and La Rochelle, and Angoulême’s image culture. The bedroom narrative expands into another history: learning to create as a multidisciplinary team.</p><a class="history-source" href="https://enjmin.cnam.fr/meet-cnam-enjmin-1036394.kjsp" target="_blank" rel="noopener noreferrer">Cnam-Enjmin / the programme’s history <span aria-hidden="true">↗</span></a></article>
+        <article><span class="memory-year">2008</span><span class="mono rust">03 / MAKE ROOM FOR CREATION</span><h3 class="reveal">Culture meets<br><em>production.</em></h3><p class="reveal">Established in 2008, the French video game tax credit places game creation within a framework of cultural and industrial support. It is one part of the context surrounding the works in these rooms. Their history is shaped by institutions and production conditions, as well as by artistic choices.</p><a class="history-source" href="https://www.cnc.fr/jeu-video/actualites/modernisation-du-credit-dimpot-jeu-video_1825640" target="_blank" rel="noopener noreferrer">CNC / a historical account of the scheme <span aria-hidden="true">↗</span></a></article>
+      </div>
+      <div class="history-closing"><span class="mono">A SELECTIVE HISTORY.<br>AN OPEN CONVERSATION.</span><p class="reveal">From the arcade to the archive,<br>the story belongs to <em>many hands.</em></p><a class="text-link magnetic" href="#origins">Revisit the beginning <span>↗</span></a></div>
     </section>
 
     <footer id="colophon" class="colophon section-shell section-rule" aria-labelledby="footer-title">
@@ -194,7 +341,7 @@
 
   <div class="modal-backdrop" aria-hidden="true" hidden></div><div class="floating-preview" aria-hidden="true"><img src="assets/dead-cells.jpg" width="640" height="360" alt=""><span class="mono"></span></div>
   <section class="exhibition-dialog artifact-dialog" role="dialog" aria-modal="true" tabindex="-1" hidden aria-labelledby="artifact-title" data-lenis-prevent><div class="dialog-inner"><div class="dialog-top mono"><span class="dialog-catalog">THE COLLECTION / 001</span><button class="dialog-close magnetic" aria-label="Close artifact">CLOSE <span>×</span></button></div><div class="dialog-image"><img src="assets/another-world-alt.jpg" alt="" width="1920" height="1080"></div><div class="dialog-body"><span class="dialog-year mono rust"></span><h2 id="artifact-title"></h2><p class="dialog-deck"></p><div class="dialog-details"></div><p class="dialog-copy"></p><a class="dialog-source text-link" href="https://www.anotherworld.fr/" target="_blank" rel="noopener noreferrer">Explore the source <span>↗</span></a><p class="dialog-credit mono"></p></div></div></section>
-  <section class="exhibition-dialog sources-dialog" role="dialog" aria-modal="true" tabindex="-1" hidden aria-labelledby="sources-title" data-lenis-prevent><div class="dialog-top mono"><span>THE CURATORIAL FILE</span><button class="sources-close dialog-close" aria-label="Close sources">CLOSE <span>×</span></button></div><div class="sources-body"><span class="eyebrow mono">TRANSPARENCY / CONTEXT / CREDIT</span><h2 id="sources-title">Behind<br>the <em>exhibition.</em></h2><p>This independent exhibition is a selective cultural history, not a complete survey. “La French Touch” is used as a curatorial lens, not a claim that every French studio shares a single style.</p><h3>Historical references</h3><ul><li><a href="https://www.anotherworld.fr/anotherworld_uk/" target="_blank" rel="noopener noreferrer">Éric Chahi — Another World, official archive ↗</a></li><li><a href="https://www.ubisoft.com/en-us/company/about-us/our-brands/rayman" target="_blank" rel="noopener noreferrer">Ubisoft — Rayman, created in 1995 ↗</a></li><li><a href="https://bethesda.net/en-US/news/arx-fatalis-birth-of-a-dynasty" target="_blank" rel="noopener noreferrer">Bethesda — Arx Fatalis: Birth of a Dynasty ↗</a></li><li><a href="https://dont-nod.com/en/about-us/" target="_blank" rel="noopener noreferrer">DON’T NOD — studio history and Life is Strange ↗</a></li><li><a href="https://www.expedition33.com/post/out-now" target="_blank" rel="noopener noreferrer">Sandfall Interactive — Expedition 33, April 2025 ↗</a></li><li><a href="https://www.kinephanos.ca/Revue_files/2015_Sidre_Fr.pdf" target="_blank" rel="noopener noreferrer">Colin Sidre — historical research on the early French industry ↗</a></li><li><a href="https://www.abandonware-france.org/ltf_abandon/ltf_infos_fic.php?id=103372" target="_blank" rel="noopener noreferrer">Abandonware France — the history of Coktel Vision ↗</a></li><li><a href="https://www.ubisoft.com/en-us/company/about-us/our-story" target="_blank" rel="noopener noreferrer">Ubisoft — company history ↗</a></li></ul><h3>About the studio chart</h3><p>The chart counts only these selected foundations: Loriciels and Infogrames (1983), Coktel Vision (1984), Titus (1985), Ubisoft (1986), Lankhor (1987), and Delphine Software (1988). Its baseline is 1982. It does not measure active companies, market size, or the full French industry.</p><h3>Image credits</h3><p>Game imagery is used to identify and discuss the exhibited works. Rights remain with their owners. Another World and Flashback are shown using later commercial editions; Rayman is represented by the Rayman Forever collection. The dates in the exhibition refer to original releases.</p><ul id="image-credit-list"></ul><h3>Sound & accessibility</h3><p>The optional ambient sound is an original, procedural synthesizer composition. It begins only when enabled. Reduced-motion preferences disable momentum, pinned sequences, image distortions, and cursor effects. All exhibits can be opened with a keyboard.</p></div></section>
+  <section class="exhibition-dialog sources-dialog" role="dialog" aria-modal="true" tabindex="-1" hidden aria-labelledby="sources-title" data-lenis-prevent><div class="dialog-top mono"><span>THE CURATORIAL FILE</span><button class="sources-close dialog-close" aria-label="Close sources">CLOSE <span>×</span></button></div><div class="sources-body"><span class="eyebrow mono">TRANSPARENCY / CONTEXT / CREDIT</span><h2 id="sources-title">Behind<br>the <em>exhibition.</em></h2><p>This independent exhibition is a selective cultural history, not a complete survey. “La French Touch” is used as a curatorial lens, not a claim that every French studio shares a single style.</p><h3>Historical references</h3><ul><li><a href="https://www.anotherworld.fr/anotherworld_uk/" target="_blank" rel="noopener noreferrer">Éric Chahi — Another World, official archive ↗</a></li><li><a href="https://www.ubisoft.com/en-us/company/about-us/our-brands/rayman" target="_blank" rel="noopener noreferrer">Ubisoft — Rayman, created in 1995 ↗</a></li><li><a href="https://bethesda.net/en-US/news/arx-fatalis-birth-of-a-dynasty" target="_blank" rel="noopener noreferrer">Bethesda — Arx Fatalis: Birth of a Dynasty ↗</a></li><li><a href="https://dont-nod.com/en/about-us/" target="_blank" rel="noopener noreferrer">DON’T NOD — studio history and Life is Strange ↗</a></li><li><a href="https://www.expedition33.com/post/out-now" target="_blank" rel="noopener noreferrer">Sandfall Interactive — Expedition 33, April 2025 ↗</a></li><li><a href="https://www.kinephanos.ca/Revue_files/2015_Sidre_Fr.pdf" target="_blank" rel="noopener noreferrer">Colin Sidre — historical research on the early French industry ↗</a></li><li><a href="https://www.abandonware-france.org/ltf_abandon/ltf_infos_fic.php?id=103372" target="_blank" rel="noopener noreferrer">Abandonware France — the history of Coktel Vision ↗</a></li><li><a href="https://www.ubisoft.com/en-us/company/about-us/our-story" target="_blank" rel="noopener noreferrer">Ubisoft — company history ↗</a></li></ul><h3>The expanded historical archive</h3><p>The additional chapters connect games with computer access, Caribbean storytelling, cultural heritage, online communities, education, and preservation. Dates refer to original releases unless otherwise stated. Connections between works are curatorial readings, not claims of direct influence.</p><ul><li><a class="history-source" href="https://www.bnf.fr/fr/la-memoire-des-jeux-video" target="_blank" rel="noopener noreferrer">Before the bedroom studio / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.epi.asso.fr/revue/histo/h85-ipt.htm" target="_blank" rel="noopener noreferrer">Informatique pour tous / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.cnc.fr/jeu-video/actualites/muriel-tramis-pionniere-du-jeu-video---je-ne-me-suis-jamais-pose-la-question-de-la-legitimite_953398" target="_blank" rel="noopener noreferrer">Méwilo / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.arte-campus.fr/program/retrogaming-made-in-france-captain-blood-1" target="_blank" rel="noopener noreferrer">Captain Blood / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.littlebigadventure.com/" target="_blank" rel="noopener noreferrer">Little Big Adventure / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.culture.gouv.fr/Media/Thematiques/Enseignement-superieur-et-recherche/Culture-et-recherche/Files/culture-et-recherche-n-112" target="_blank" rel="noopener noreferrer">Versailles 1685 / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.gog.com/en/game/atlantis_the_lost_tales" target="_blank" rel="noopener noreferrer">Atlantis: The Lost Tales / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.microids.com/a-look-back-at-20-years-of-syberia-with-microids-studio-paris/" target="_blank" rel="noopener noreferrer">Syberia / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://store.steampowered.com/app/15130/Beyond_Good_and_Evil/" target="_blank" rel="noopener noreferrer">Beyond Good & Evil / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.trackmania.com/index.php/news/7810" target="_blank" rel="noopener noreferrer">Trackmania / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://static.ankama.com/ankama/cms/file/372/1383304.pdf" target="_blank" rel="noopener noreferrer">DOFUS / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://store.amplitude-studios.com/en/endless/endless-space" target="_blank" rel="noopener noreferrer">Endless Space / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.thegamebakers.com/furi/" target="_blank" rel="noopener noreferrer">Furi / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.sifugame.com/news/sifu-is-available-now" target="_blank" rel="noopener noreferrer">Sifu / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.rundisc.io/chants-of-sennaar/" target="_blank" rel="noopener noreferrer">Chants of Sennaar / historical source <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.bnf.fr/fr/les-jeux-video-la-bnf" target="_blank" rel="noopener noreferrer">BnF / video game preservation <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://enjmin.cnam.fr/meet-cnam-enjmin-1036394.kjsp" target="_blank" rel="noopener noreferrer">Cnam-Enjmin / programme history <span aria-hidden="true">↗</span></a></li><li><a class="history-source" href="https://www.cnc.fr/jeu-video/actualites/modernisation-du-credit-dimpot-jeu-video_1825640" target="_blank" rel="noopener noreferrer">CNC / a history of support for game creation <span aria-hidden="true">↗</span></a></li></ul><h3>About the studio chart</h3><p>The chart counts only these selected foundations: Loriciels and Infogrames (1983), Coktel Vision (1984), Titus (1985), Ubisoft (1986), Lankhor (1987), and Delphine Software (1988). Its baseline is 1982. It does not measure active companies, market size, or the full French industry.</p><h3>Image credits</h3><p>Game imagery is used to identify and discuss the exhibited works. Rights remain with their owners. Another World and Flashback are shown using later commercial editions; Rayman is represented by the Rayman Forever collection. The dates in the exhibition refer to original releases.</p><ul id="image-credit-list"></ul><h3>Sound & accessibility</h3><p>The optional ambient sound is an original, procedural synthesizer composition. It begins only when enabled. Reduced-motion preferences disable momentum, pinned sequences, image distortions, and cursor effects. All exhibits can be opened with a keyboard.</p></div></section>
   <noscript><style>.preloader{display:none!important}.loading{overflow:auto!important}.gallery-window{overflow-x:auto!important}</style><p class="noscript-note">The exhibition is readable without JavaScript. Enable JavaScript to open artifact notes and experience the interactive galleries.</p></noscript>
 </body>
 </html>
