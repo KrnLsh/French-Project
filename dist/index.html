@@ -6,30 +6,38 @@
   <meta name="theme-color" content="#F6F5F0">
   <meta name="description" content="L’Art du Jeu. An independent digital exhibition tracing five decades of French video game artistry, from bedroom pioneers to a contemporary renaissance.">
   <title>L’Art du Jeu — A History of Video Games in France</title>
-  <script src="theme.js?v=2"></script>
+  <script src="theme.js?v=3"></script>
   <link rel="icon" href="assets/emblem.svg" type="image/svg+xml">
   <link rel="preload" href="assets/type-1.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="assets/fonts.css">
-  <link rel="stylesheet" href="styles.css?v=17">
-  <link rel="stylesheet" href="chronicle.css?v=16">
-  <link rel="stylesheet" href="signature.css?v=5">
-  <link rel="stylesheet" href="theme.css?v=3">
-  <link rel="stylesheet" href="entrance.css?v=1">
-  <link rel="stylesheet" href="hero-ascii.css?v=2">
-  <link rel="stylesheet" href="history.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="chronicle.css?v=17">
+  <link rel="stylesheet" href="signature.css?v=6">
+  <link rel="stylesheet" href="theme.css?v=4">
+  <link rel="stylesheet" href="entrance.css?v=2">
+  <link rel="stylesheet" href="hero-ascii.css?v=3">
+  <link rel="stylesheet" href="history.css?v=3">
+  <link rel="stylesheet" href="headlines.css?v=1">
+  <link rel="stylesheet" href="performance.css?v=3">
   <script>document.documentElement.classList.add('js','entrance-pending');setTimeout(()=>{if(!document.documentElement.classList.contains('ready')){try{window.lartRevealEntrance?.()}finally{document.documentElement.classList.remove('entrance-pending');document.documentElement.classList.add('ready');document.body?.classList.remove('loading');document.querySelector('.preloader')?.remove()}}},10000)</script>
   <script src="assets/vendor/gsap.min.js" defer></script>
   <script src="assets/vendor/ScrollTrigger.min.js" defer></script>
   <script src="assets/vendor/lenis.min.js" defer></script>
   <script src="assets/vendor/three.min.js" defer></script>
   <script src="assets/vendor/split-type.min.js" defer></script>
-  <script src="chronicle.js?v=18" defer></script>
-  <script src="signature.js?v=8" defer></script>
-  <script src="image-planes.js?v=2" defer></script>
-  <script src="cursor-fog.js?v=2" defer></script>
-  <script src="hero-ascii.js?v=2" defer></script>
+  <script src="render-performance.js?v=2" defer></script>
+  <script src="hero-ascii-renderer.js?v=1" defer></script>
+  <script src="chronicle-plot.js?v=1" defer></script>
+  <script src="chronicle.js?v=20" defer></script>
+  <script src="signature.js?v=11" defer></script>
+  <script src="image-planes.js?v=4" defer></script>
+  <script src="cursor-fog.js?v=4" defer></script>
+  <script src="hero-ascii.js?v=4" defer></script>
   <script src="history-content.js?v=1" defer></script>
-  <script src="app.js?v=29" defer></script>
+  <script src="headlines.js?v=5" defer></script>
+  <script src="footer-trail.js?v=1" defer></script>
+  <script src="cursor.js?v=3" defer></script>
+  <script src="app.js?v=32" defer></script>
 </head>
 <body class="loading">
   <a class="skip-link" href="#main">Skip to the exhibition</a>
@@ -244,6 +252,7 @@
     </section>
 
     <section id="worlds" class="worlds section-shell section-rule" aria-labelledby="worlds-title">
+      <div class="worlds-backdrop" aria-hidden="true"></div>
       <div class="section-label mono"><span>03 / WORLDS WITHOUT LIMITS</span><span>2000—2015</span></div>
       <div class="worlds-intro"><div class="worlds-heading"><span class="eyebrow mono">FROM AUTHORSHIP TO ARCHITECTURE</span><h2 id="worlds-title" class="reveal">The world<br>is the <em>work.</em></h2><p class="reveal">The canvas expands. So does the ambition.</p><p class="body-small reveal">Ubisoft turns open worlds into a global language. Arkane builds places that answer back. Quantic Dream explores interactive cinema; DON’T NOD makes memory, adolescence, and consequence playable.</p></div><figure class="worlds-image" data-speed="0.1"><button class="image-distort" data-inspect="dishonored" data-cursor="explore" aria-label="Inspect Dishonored"><img src="assets/dishonored.jpg" alt="The intricate, industrial architectural world of Dishonored" width="1920" height="1080" loading="lazy"><span class="artifact-open">↗</span></button><figcaption class="mono"><span>DISHONORED / ARKANE STUDIOS</span><span>2012</span></figcaption></figure></div>
       <div class="studio-index"><span class="mono">FOUR APPROACHES</span><button data-inspect="ubisoft" class="magnetic">Ubisoft <span>Open worlds ↗</span></button><button data-inspect="dishonored" class="magnetic">Arkane <span>Immersive systems ↗</span></button><button data-inspect="quantic-dream" class="magnetic">Quantic Dream <span>Interactive cinema ↗</span></button><button data-inspect="life-is-strange" class="magnetic">DON’T NOD <span>Intimate stories ↗</span></button></div>
@@ -333,7 +342,7 @@
 
     <footer id="colophon" class="colophon section-shell section-rule" aria-labelledby="footer-title">
       <div class="section-label mono"><span>05 / THE STORY CONTINUES</span><span>FIN. ET À SUIVRE.</span></div>
-      <div class="footer-art"><div class="trail-grid" aria-hidden="true"></div><h2 id="footer-title">Le jeu<br><em>continue.</em><span>✳</span></h2><a href="#entrance" class="return-button magnetic" aria-label="Return to entrance"><span>↑</span><span class="mono">RETURN TO<br>THE ENTRANCE</span></a></div>
+      <div class="footer-art"><div class="trail-grid" aria-hidden="true"></div><h2 id="footer-title">Le jeu<br><em>continue.</em><span data-headline-decoration aria-hidden="true">✳</span></h2><a href="#entrance" class="return-button magnetic" aria-label="Return to entrance"><span>↑</span><span class="mono">RETURN TO<br>THE ENTRANCE</span></a></div>
       <div class="footer-info"><div><a href="#entrance" class="footer-brand">L’Art du Jeu</a><p class="body-small">A history of video games in France.<br>An independent digital museum.<br>Made for the curious.</p></div><div class="footer-links"><span class="mono">EXHIBITION NOTES</span><button class="text-link" id="sources-button">Sources & image credits <span>↗</span></button><button class="text-link motion-toggle" aria-pressed="false">Reduce motion <span>○</span></button><span class="mono footer-edition">DIGITAL EDITION / 2026</span></div><p class="footer-statement body-small">An independent editorial project celebrating creative work. Game imagery and trademarks belong to their respective creators and rights holders.</p></div>
       <div class="footer-bottom mono"><span>© 2026 L’ART DU JEU</span><span>ART IS A WAY OF PLAYING.</span><span>FRANCE → EVERYWHERE</span></div>
     </footer>

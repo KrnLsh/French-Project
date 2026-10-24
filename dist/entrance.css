@@ -8,8 +8,8 @@
 .js.entrance-pending .site-header{visibility:hidden}
 .loader-symbol{position:relative;width:max-content;margin-inline:auto;isolation:isolate}
 .loader-echo{position:absolute;inset:0;width:100%;height:100%;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:0;pointer-events:none}
-.loader-echo-a{stroke:#A3B9FF}
-.loader-echo-b{stroke:#3563FF}
+.loader-echo-a{stroke:#A3B9FF;clip-path:inset(12% 0 64%)}
+.loader-echo-b{stroke:#3563FF;clip-path:inset(61% 0 22%)}
 .loader-symbol::after{content:'';position:absolute;inset:0;pointer-events:none;opacity:0;background:linear-gradient(transparent 0 42%,#88A5FF 42% 42.6%,transparent 42.6% 70%,#4D73FF 70% 70.5%,transparent 70.5%);mix-blend-mode:screen}
 .preloader.is-glitching .loader-echo-a{animation:archive-slice-a .2s steps(1,end) both}
 .preloader.is-glitching .loader-echo-b{animation:archive-slice-b .2s steps(1,end) both}
@@ -19,15 +19,15 @@
 .preloader.is-glitching .loader-count,
 .preloader.is-glitching .loader-log{text-shadow:2px 0 #4D73FF,-1px 0 #B4C5FF;animation:archive-text .2s steps(1,end) both}
 @keyframes archive-slice-a{
-  0%{opacity:.8;clip-path:inset(12% 0 64%);transform:translate(7px,-1px) skewX(-3deg)}
-  27%{clip-path:inset(58% 0 19%);transform:translate(-5px,0)}
-  62%{clip-path:inset(33% 0 52%);transform:translate(4px,1px)}
+  0%{opacity:.8;transform:translate(7px,-1px) skewX(-3deg)}
+  27%{transform:translate(-5px,0)}
+  62%{transform:translate(4px,1px)}
   84%,100%{opacity:0;transform:none}
 }
 @keyframes archive-slice-b{
-  0%{opacity:.65;clip-path:inset(61% 0 22%);transform:translate(-6px,1px)}
-  34%{clip-path:inset(21% 0 65%);transform:translate(5px,-1px) skewX(2deg)}
-  69%{clip-path:inset(72% 0 12%);transform:translate(-3px,0)}
+  0%{opacity:.65;transform:translate(-6px,1px)}
+  34%{transform:translate(5px,-1px) skewX(2deg)}
+  69%{transform:translate(-3px,0)}
   88%,100%{opacity:0;transform:none}
 }
 @keyframes archive-core{
@@ -43,7 +43,7 @@
 @keyframes archive-text{
   0%,38%{transform:translateX(1px)}
   21%,60%{transform:translateX(-1px)}
-  82%,100%{transform:none;text-shadow:none}
+  82%,100%{transform:none}
 }
 .motion-reduced .loader-echo,.motion-reduced .loader-symbol::after{display:none}
 .motion-reduced .preloader *{animation:none!important}

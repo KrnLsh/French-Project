@@ -18,13 +18,13 @@
 .history-origin-entry .history-caption{margin-top:20px}
 .history-index{display:grid;grid-template-columns:180px minmax(0,1fr);column-gap:5vw;border-top:1px solid var(--border-hairline);margin-top:70px;padding-top:24px}
 .history-index>.mono{grid-column:1;grid-row:1/6;padding-top:21px}
-.history-index>a{grid-column:2;display:grid;grid-template-columns:36px minmax(0,1fr) 150px;gap:20px;align-items:center;border-bottom:1px solid var(--border-hairline);padding:20px 8px;transition:color .3s,padding .4s}
+.history-index>a{grid-column:2;display:grid;grid-template-columns:36px minmax(0,1fr) 150px;gap:20px;align-items:center;border-bottom:1px solid var(--border-hairline);padding:20px 8px;transition:transform .4s}
 .history-index b,.history-index small{font:12px/1.7 var(--mono);font-weight:400}
 .history-index>a>span{font:clamp(25px,2.4vw,38px)/1.15 var(--serif)}
 .history-index small{text-align:right;color:var(--text-secondary)}
-.history-index a:hover{color:var(--accent-primary);padding-left:17px}
+.history-index a:hover{color:var(--accent-primary);transform:translate3d(9px,0,0)}
 .history-footnote{display:flex;justify-content:flex-end;gap:25px;flex-wrap:wrap;margin-top:27px}
-.history-source{display:inline-block;color:var(--text-secondary);font:13px/1.8 var(--sans);text-decoration:underline;text-underline-offset:4px;transition:color .25s;overflow-wrap:anywhere}
+.history-source{display:inline-block;color:var(--text-secondary);font:13px/1.8 var(--sans);text-decoration:underline;text-underline-offset:4px;transition:none;overflow-wrap:anywhere}
 .history-source:hover{color:var(--accent-primary)}
 .history-inset{padding:clamp(65px,8vw,120px) 0;border-top:1px solid var(--border-hairline)}
 .history-inset-heading{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:15px 8vw;align-items:end;margin-bottom:55px}

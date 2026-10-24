@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/serve.mjs",
-    "check": "node --check dist/history-content.js && node --check dist/app.js && node --check dist/chronicle.js && node --check dist/signature.js && node --check dist/theme.js && node --check dist/image-planes.js && node --check dist/cursor-fog.js && node --check dist/hero-ascii.js && node scripts/check.mjs && node --test scripts/runtime.test.mjs scripts/cursor-fog.test.mjs scripts/hero-ascii.test.mjs",
-    "test": "node --test scripts/runtime.test.mjs scripts/cursor-fog.test.mjs scripts/hero-ascii.test.mjs"
+    "check": "node --check dist/hero-ascii-renderer.js && node --check dist/hero-ascii-worker.js && node --check dist/footer-trail.js && node --check dist/chronicle-plot.js && node --check dist/history-content.js && node --check dist/headlines.js && node --check dist/render-performance.js && node --check dist/cursor.js && node --check dist/app.js && node --check dist/chronicle.js && node --check dist/signature.js && node --check dist/theme.js && node --check dist/image-planes.js && node --check dist/cursor-fog.js && node --check dist/hero-ascii.js && node scripts/check.mjs && node --test scripts/runtime.test.mjs scripts/cursor-fog.test.mjs scripts/hero-ascii.test.mjs scripts/performance.test.mjs scripts/graphics.test.mjs",
+    "test": "node --test scripts/runtime.test.mjs scripts/cursor-fog.test.mjs scripts/hero-ascii.test.mjs scripts/performance.test.mjs scripts/graphics.test.mjs"
   }
 }

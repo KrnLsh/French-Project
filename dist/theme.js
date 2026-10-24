@@ -3,7 +3,7 @@
  'use strict';
  const root=document.documentElement,system=matchMedia('(prefers-color-scheme:dark)');
  const storageKey='lart-theme',listeners=new Set();
- let explicit=false,frame=0,paintUntil=0;
+ let explicit=false,frame=0,cachedPalette=null;
  let saved=null;
  try{saved=localStorage.getItem(storageKey);}catch{}
  if(saved==='light'||saved==='dark')explicit=true;
@@ -12,13 +12,15 @@
  const meta=document.querySelector('meta[name="theme-color"]');
  if(meta)meta.content=initial==='dark'?'#191B1B':'#F6F5F0';
  function palette(){
+  if(cachedPalette)return cachedPalette;
   const style=getComputedStyle(root),read=name=>style.getPropertyValue(name).trim();
-  return {background:read('--bg-primary'),secondary:read('--bg-secondary'),accent:read('--accent-primary'),contour:read('--contour-ink')};
+  cachedPalette={background:read('--bg-primary'),secondary:read('--bg-secondary'),accent:read('--accent-primary'),contour:read('--contour-ink')};
+  return cachedPalette;
  }
  function paint(){
   cancelAnimationFrame(frame);frame=0;if(document.hidden)return;
   const value=palette();listeners.forEach(listener=>listener(value));
-  if(!document.hidden&&performance.now()<paintUntil)frame=requestAnimationFrame(paint);
+
  }
  function syncControl(){
   const button=document.querySelector('#theme-toggle');if(!button)return;
@@ -30,11 +32,9 @@
   if(theme!=='light'&&theme!=='dark')return;
   if(persist){explicit=true;try{localStorage.setItem(storageKey,theme);}catch{}}
   if(root.dataset.theme===theme){syncControl();return;}
-  root.dataset.theme=theme;syncControl();
+  root.dataset.theme=theme;cachedPalette=null;syncControl();
   if(meta)meta.content=theme==='dark'?'#191B1B':'#F6F5F0';
-  const reduced=root.classList.contains('motion-reduced')||(!root.classList.contains('motion-full')&&matchMedia('(prefers-reduced-motion:reduce)').matches);
-  paintUntil=performance.now()+(reduced||!root.classList.contains('theme-ready')?0:950);
-  cancelAnimationFrame(frame);paint();
+  cancelAnimationFrame(frame);frame=requestAnimationFrame(paint);
   dispatchEvent(new CustomEvent('lart-theme-change',{detail:{theme}}));
  }
  window.lartTheme={
@@ -56,7 +56,7 @@
   if(document.hidden){cancelAnimationFrame(frame);frame=0;}else paint();
  });
  addEventListener('lart-motion-change',()=>{
-  if(root.classList.contains('motion-reduced')){paintUntil=0;paint();}
+  if(!cachedPalette){cancelAnimationFrame(frame);frame=requestAnimationFrame(paint);}
  });
  addEventListener('pageshow',()=>{syncControl();paint();});
 })();

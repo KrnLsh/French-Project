@@ -62,3 +62,11 @@ test('fog ignores touch and small screens, then works when a desktop pointer ret
   f.query.matches=true;f.query.fire('change');f.move(400,100);f.move(450,100);f.step();
   assert.ok(f.draws.length>0);
 });
+
+test('moving fog repaints a small dirty region rather than clearing the viewport every frame',()=>{
+  const f=fixture();f.move(100,100);f.move(150,110);f.step();f.clears.length=0;
+  for(let i=0;i<5;i++)f.step();
+  assert.ok(f.clears.length>0);
+  assert.ok(f.clears.every(([, ,width,height])=>width*height<50000),'stationary fading wisps only damage their narrow bounds');
+  f.fog.destroy();
+});

@@ -1,0 +1,33 @@
+/* Keep pointer morphs on the compositor; reserve layout for content. */
+.cursor-dot{will-change:transform,opacity;contain:layout paint style}
+.cursor-ring,.cursor-ring.is-ball{width:88px;height:88px;margin:-44px;border:0;background:transparent;transition:none;will-change:transform,opacity;contain:layout paint style}
+.cursor-ring::before,.cursor-ring::after{content:'';position:absolute;inset:0;border-radius:50%;transform:scale3d(.477273,.477273,1);transition:transform .24s cubic-bezier(.22,1,.36,1),opacity .18s;will-change:transform,opacity;backface-visibility:hidden}
+.cursor-ring::before{border:2px solid rgba(255,255,255,.55);opacity:1}
+.cursor-ring::after{background:#fff;opacity:0}
+.cursor-ring.is-ball::before{transform:scale3d(1,1,1);opacity:0}
+.cursor-ring.is-ball::after{transform:scale3d(1,1,1);opacity:1}
+.split-line{will-change:auto}
+.paper-grain{contain:strict}
+
+.specular{background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.16),transparent 65%);transform:translate(calc(var(--glare-x,50%) - 50%),calc(var(--glare-y,50%) - 50%)) scale(1.4);will-change:transform}
+
+/* Contain bounded decorative surfaces, keeping pinned/sticky ancestors uncontained. */
+.hero-ascii,.image-distort,.chronicle-plot,.trail-grid,.dialog-morph{contain:layout paint style}
+.cursor-dot,.cursor-ring,.floating-preview,.dialog-morph,.gallery-track,.compass,
+.hero-artifact,.worlds-image,.signature-canvas,.worlds-backdrop{backface-visibility:hidden;will-change:transform,opacity}
+.headline-revealing .headline-copy,.headline-revealing .headline-block,
+.hero-title-entering .hero-line-text,.hero-title-entering .hero-line-wipe,
+.magnetic:hover,.tilt-card:hover .image-distort{backface-visibility:hidden;will-change:transform,opacity}
+.site-header,.modal-backdrop{backdrop-filter:none}
+.site-header{background:var(--bg-primary)}
+.chronicle-plot{position:relative;width:100%}
+.chronicle-plot>canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.gpu-plot-ready .chronicle-line,.gpu-plot-ready .chronicle-area,.gpu-plot-ready .chronicle-guide,
+.gpu-plot-ready .chronicle-bars,.gpu-plot-ready .chronicle-head,.gpu-plot-ready .chronicle-halo{display:none}
+.chronicle-bars rect{transform-box:fill-box;transform-origin:50% 100%}
+.trail-grid{display:block;background-image:linear-gradient(to right,var(--border-hairline) 1px,transparent 1px),linear-gradient(to bottom,var(--border-hairline) 1px,transparent 1px);background-size:calc(100% / 18) calc(100% / 6)}
+.trail-grid>canvas{display:block;width:100%;height:100%;pointer-events:none}
+.section-progress-rule{position:absolute;top:0;left:var(--gutter);right:var(--gutter);height:1px;background:var(--border-hairline);transform-origin:0 50%;backface-visibility:hidden}
+.js .section-rule::before{display:none}
+@media(max-width:760px){.trail-grid{background-size:calc(100% / 12) calc(100% / 6)}}
+.motion-reduced .gallery-track,.motion-reduced .hero-artifact,.motion-reduced .worlds-image{will-change:auto}

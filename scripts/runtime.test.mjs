@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import vm from 'node:vm';
 
+const performanceSource=await fs.readFile(new URL('../dist/render-performance.js',import.meta.url),'utf8');
 const themeSource=await fs.readFile(new URL('../dist/theme.js',import.meta.url),'utf8');
 const planesSource=await fs.readFile(new URL('../dist/image-planes.js',import.meta.url),'utf8');
 class Events {
@@ -43,15 +44,15 @@ function themeFixture({reduce=false}={}){
   document.fire('DOMContentLoaded');frames.step();frames.step();
   return {root,document,button,frames,globalEvents,colourScheme,attributes,storage};
 }
-test('appearance keeps only one animation loop when lifecycle events overlap',()=>{
+test('appearance commits palette once and stays idle across lifecycle events',()=>{
   const fixture=themeFixture();fixture.button.fire('click');
   assert.equal(fixture.frames.pending.size,1);
   fixture.globalEvents.fire('pageshow');fixture.document.fire('visibilitychange');
-  assert.equal(fixture.frames.pending.size,1);
+  assert.equal(fixture.frames.pending.size,0,'the palette is committed without a polling loop');
   fixture.document.hidden=true;fixture.document.fire('visibilitychange');
   assert.equal(fixture.frames.pending.size,0);
   fixture.document.hidden=false;fixture.document.fire('visibilitychange');
-  assert.equal(fixture.frames.pending.size,1);
+  assert.equal(fixture.frames.pending.size,0);
 });
 test('appearance remembers explicit choices and resets after storage is cleared',()=>{
   const fixture=themeFixture();fixture.button.fire('click');
@@ -66,7 +67,7 @@ test('full-motion override works with a reduced-motion system preference',()=>{
   const fixture=themeFixture({reduce:true});fixture.button.fire('click');
   assert.equal(fixture.frames.pending.size,1);
   fixture.root.classList.remove('motion-full');fixture.root.classList.add('motion-reduced');
-  fixture.globalEvents.fire('lart-motion-change');
+  fixture.globalEvents.fire('lart-motion-change');fixture.frames.step();
   assert.equal(fixture.frames.pending.size,0);
 });
 class Element extends Events {
@@ -93,7 +94,7 @@ function planeFixture({desktop=true,reduced=false}={}){
     emit(target,visible=true){this.callback([{target,isIntersecting:visible}]);}
   };}
   const pointer=new Events();pointer.matches=true;
-  const flags={desktop,reduced};
+  const flags={desktop,reduced,dialog:false};
   const THREE={
     Vector2:class {constructor(x=0,y=0){this.x=x;this.y=y;}set(x,y){this.x=x;this.y=y;}lerp(target,value){this.x+=(target.x-this.x)*value;this.y+=(target.y-this.y)*value;}},
     WebGLRenderer:class {
@@ -112,8 +113,8 @@ function planeFixture({desktop=true,reduced=false}={}){
     requestAnimationFrame:callback=>frames.request(callback),cancelAnimationFrame:id=>frames.cancel(id),
     addEventListener:(...args)=>globalEvents.addEventListener(...args),
     removeEventListener:(...args)=>globalEvents.removeEventListener(...args)};
-  vm.runInNewContext(planesSource,context);
-  const controller=context.window.createImagePlanes({THREE,isReduced:()=>flags.reduced,isDesktop:()=>flags.desktop,pointerQuery:pointer});
+  vm.runInNewContext(performanceSource+'\n'+planesSource,context);
+  const controller=context.window.createImagePlanes({THREE,isReduced:()=>flags.reduced,isDesktop:()=>flags.desktop,pointerQuery:pointer,isDialogOpen:()=>flags.dialog});
   return {controller,stats,containers,frames,intersections,resizes,flags,globalEvents,document};
 }
 test('image effects allocate only on hover and release every resource offscreen',()=>{
@@ -141,7 +142,8 @@ test('image effects keep pixel art intrinsic and recover safely from context los
   canvas.fire('webglcontextlost',{preventDefault(){prevented=true;}});
   assert.ok(prevented);assert.equal(fixture.frames.pending.size,0);assert.equal(container.classList.contains('webgl-ready'),false);
   canvas.fire('webglcontextrestored');
-  assert.equal(container.classList.contains('webgl-ready'),true);assert.equal(fixture.frames.pending.size,1);
+  assert.equal(container.classList.contains('webgl-ready'),true);assert.equal(fixture.frames.pending.size,2,'one shared read phase and one render callback');
+  fixture.frames.step();assert.equal(fixture.frames.pending.size,1,'only the render loop continues');
   fixture.controller.destroy();assert.equal(container.children.length,0);assert.equal(fixture.frames.pending.size,0);
 });
 test('image effects handle mobile-to-desktop changes, motion settings, and page restoration',()=>{
@@ -155,8 +157,23 @@ test('image effects handle mobile-to-desktop changes, motion settings, and page 
   fixture.flags.reduced=false;fixture.globalEvents.fire('lart-motion-change');
   assert.equal(fixture.stats.created,2);
   fixture.globalEvents.fire('pagehide');assert.equal(fixture.frames.pending.size,0);
-  fixture.globalEvents.fire('pageshow');assert.equal(fixture.stats.created,3);assert.equal(fixture.frames.pending.size,1);
+  fixture.globalEvents.fire('pageshow');assert.equal(fixture.stats.created,3);assert.equal(fixture.frames.pending.size,2);
+  fixture.frames.step();assert.equal(fixture.frames.pending.size,1);
   fixture.controller.destroy();fixture.controller.destroy();
   assert.equal(fixture.stats.created,fixture.stats.disposed);
   container.fire('pointerenter');assert.equal(fixture.frames.pending.size,0);
+});
+
+test('image pointer events batch geometry reads and reading panels suspend GPU work',()=>{
+  const fixture=planeFixture(),container=fixture.containers[0];let reads=0;
+  container.getBoundingClientRect=()=>{reads++;return {left:0,top:0,width:640,height:360};};
+  fixture.intersections[0].emit(container);container.fire('pointerenter');
+  for(let i=0;i<250;i++)container.fire('pointermove',{clientX:i,clientY:150});
+  assert.equal(reads,0);fixture.frames.step();assert.equal(reads,1);
+  fixture.flags.dialog=true;fixture.globalEvents.fire('lart-dialog-change');
+  assert.equal(fixture.frames.pending.size,0);assert.equal(fixture.stats.created,fixture.stats.disposed);
+  fixture.flags.dialog=false;fixture.globalEvents.fire('lart-dialog-change');
+  assert.equal(fixture.frames.pending.size,0,'closing a panel does not restart a stale hover');
+  container.fire('pointerenter');assert.equal(fixture.frames.pending.size,2);fixture.frames.step();assert.equal(fixture.frames.pending.size,1);
+  fixture.controller.destroy();
 });

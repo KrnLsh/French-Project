@@ -19,6 +19,9 @@
   let lenis = null, lenisTicker = null, motionContext = null, galleryTrigger = null;
   let splits = [], started = false, resizing = false, heroTitleTimeline = null, heroEntranceTimeline = null, launchTimeline = null;
   let scrollVelocity = 0, velocitySmoothed = 0, galleryProgress = 0;
+  const headlines=window.createHeadlineReveals({gsap:hasGSAP?gsap:null,isReduced:()=>reduced});
+  window.lartHeadlines=headlines;
+  const scrollKinetics=window.createScrollKinetics({isReduced:()=>reduced});
   let restoringDialogFocus = false;
   let keyboardNavigation = false;
   let lastScroll = scrollY, lastScrollTime = performance.now();
@@ -43,7 +46,7 @@
   addEventListener('pointerdown',event=>{
     keyboardNavigation=false;
     trackPointer(event);
-    ripples[rippleIndex]={x:pointer.nx,y:pointer.ny,time:ambientElapsed};
+    const ripple=ripples[rippleIndex];ripple.x=pointer.nx;ripple.y=pointer.ny;ripple.time=ambientElapsed;
     rippleIndex=(rippleIndex+1)%ripples.length;
   },{passive:true,capture:true});
   addEventListener('keydown',event=>{
@@ -88,14 +91,26 @@
   const progressLabel=$('.scroll-progress'),progressLine=$('.header-progress');
   const eraSections=['pioneers','auteurs','worlds','renaissance'].map(id=>({id,element:document.getElementById(id)}));
   const eraLinks=$$('.era-nav a');
-  let lastProgress=-1,lastActiveEra=null;
+  let lastProgress=-1,lastActiveEra=null,progressGeometryDirty=true,maximumScroll=1,eraOffsets=new Float32Array(eraSections.length);
+  function measureProgressGeometry(){
+    maximumScroll=Math.max(1,root.scrollHeight-innerHeight);
+    for(let i=0;i<eraSections.length;i++)eraOffsets[i]=eraSections[i].element.getBoundingClientRect().top+scrollY;
+    headerHeight=parseInt(getComputedStyle(root).getPropertyValue('--header-height'))||78;
+    progressGeometryDirty=false;window.museumFrames.write(updateProgress);
+  }
+  let headerHeight=110;
+  const invalidateProgressGeometry=()=>{progressGeometryDirty=true;window.museumFrames.read(measureProgressGeometry);};
+  if(hasGSAP)ScrollTrigger.addEventListener('refresh',invalidateProgressGeometry);
+  new ResizeObserver(invalidateProgressGeometry).observe($('#main'));
+  addEventListener('resize',invalidateProgressGeometry,{passive:true});
+  invalidateProgressGeometry();
   function updateProgress() {
     // Read geometry before changing text or styles to avoid an extra layout pass.
-    const maximum=Math.max(1,root.scrollHeight-innerHeight),progress=clamp(scrollY/maximum,0,1);
+    const progress=clamp(scrollY/maximumScroll,0,1);
     let active='';
-    for(const section of eraSections)if(section.element.getBoundingClientRect().top<innerHeight*.5)active=section.id;
+    for(let i=0;i<eraOffsets.length;i++)if(eraOffsets[i]<scrollY+innerHeight*.5)active=eraSections[i].id;
     const now=performance.now();
-    if(!lenis)scrollVelocity=(scrollY-lastScroll)/Math.max(16,now-lastScrollTime)*1000;
+    if(now>lastScrollTime)scrollVelocity=(scrollY-lastScroll)/Math.max(1,now-lastScrollTime)*1000;
     lastScroll=scrollY;lastScrollTime=now;
     const percent=Math.round(progress*100);
     if(percent!==lastProgress){progressLabel.textContent=String(percent).padStart(3,'0')+'%';lastProgress=percent;}
@@ -109,15 +124,16 @@
     }
   }
   let scrollQueued = false;
-  addEventListener('scroll', () => {if (!scrollQueued) {requestAnimationFrame(() => {updateProgress();scrollQueued=false;});scrollQueued=true;}}, {passive:true});
+  function flushScroll(){scrollQueued=false;updateProgress();}
+  addEventListener('scroll',()=>{if(!lenis&&!scrollQueued){window.museumFrames.write(flushScroll);scrollQueued=true;}},{passive:true});
 
   function initSmoothScroll() {
     if (lenis) {lenis.destroy();lenis=null;}
     if (lenisTicker && hasGSAP) gsap.ticker.remove(lenisTicker);
     lenisTicker = null;
     if (!reduced && desktop() && hasGSAP && window.Lenis && finePointer.matches) {
-      lenis = new Lenis({duration:1.12, easing:t => Math.min(1,1.001-Math.pow(2,-10*t)), smoothWheel:true, syncTouch:false});
-      lenis.on('scroll', e => {scrollVelocity=e.velocity*55;ScrollTrigger.update();});
+      lenis = new Lenis({duration:.92, easing:t => Math.min(1,1.001-Math.pow(2,-10*t)), smoothWheel:true, syncTouch:false});
+      lenis.on('scroll',()=>{ScrollTrigger.update();updateProgress();});
       lenisTicker = time => lenis?.raf(time*1000);
       gsap.ticker.add(lenisTicker);
       gsap.ticker.lagSmoothing(0);
@@ -131,8 +147,8 @@
       navigationUntil=performance.now()+(options.immediate?350:((options.duration??1.6)*1000+500));
       if(hasGSAP)ScrollTrigger.getAll().forEach(trigger=>trigger.getTween(true)?.kill());
     }
-    if (lenis) lenis.scrollTo(target, {offset:typeof target==='number'?0:-parseInt(getComputedStyle(root).getPropertyValue('--header-height')), duration:1.6,...options});
-    else {const top=typeof target==='number'?target:target.getBoundingClientRect().top+scrollY-parseInt(getComputedStyle(root).getPropertyValue('--header-height'));scrollTo({top,behavior:reduced||options.immediate?'instant':'smooth'});}
+    if (lenis) lenis.scrollTo(target, {offset:typeof target==='number'?0:-headerHeight, duration:1.6,...options});
+    else {const top=typeof target==='number'?target:target.getBoundingClientRect().top+scrollY-headerHeight;scrollTo({top,behavior:reduced||options.immediate?'instant':'smooth'});}
   }
   $$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
     const target = targetFromHash(a.getAttribute('href'));
@@ -147,8 +163,13 @@
   menuToggle.addEventListener('click',()=>{const open=menuToggle.getAttribute('aria-expanded')==='true';menuToggle.setAttribute('aria-expanded',String(!open));$('#mobile-nav').hidden=open;});
   addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
 
+  const sectionRules=$$('.section-rule');
+  for(let i=0;i<sectionRules.length;i++){
+    const rule=document.createElement('span');rule.className='section-progress-rule';rule.setAttribute('aria-hidden','true');sectionRules[i].prepend(rule);
+  }
   function setupMotion() {
     if (!hasGSAP) return;
+    headlines.reset();scrollKinetics.reset();
     motionContext?.revert();
     studioChronicle.reset();
     frenchSignature.reset();
@@ -156,7 +177,8 @@
     galleryTrigger = null;
     initSmoothScroll();
     if (reduced) {
-      gsap.set('.reveal',{clearProps:'all'});
+      gsap.set('.reveal',{clearProps:'all'});gsap.set('.section-progress-rule',{scaleX:1});
+      headlines.setup({animated:false});
       $('.gallery-window').style.overflowX='auto';
       studioChronicle.setup({animated:false});
       frenchSignature.setup({animated:false});
@@ -164,7 +186,7 @@
     }
     $('.gallery-window').style.removeProperty('overflow-x');
     motionContext = gsap.context(()=>{
-      $$('.reveal').forEach(el=>{
+      $$('.reveal').filter(el=>!el.matches('h2,h3,h4,.quote-text')).forEach(el=>{
         if(window.SplitType) {
           const split=new SplitType(el,{types:'lines',lineClass:'split-line'});splits.push(split);
           const masks=split.lines.map(line=>{
@@ -179,7 +201,7 @@
           });
         } else gsap.from(el,{y:35,opacity:0,duration:.9,scrollTrigger:{trigger:el,start:'top 92%',once:true}});
       });
-      $$('.section-rule').forEach(section=>gsap.fromTo(section,{'--line-progress':0},{'--line-progress':1,duration:1.2,ease:'power3.inOut',scrollTrigger:{trigger:section,start:'top 92%',once:true}}));
+      sectionRules.forEach(section=>gsap.fromTo(section.querySelector('.section-progress-rule'),{scaleX:0},{scaleX:1,duration:1.2,ease:'power3.inOut',scrollTrigger:{trigger:section,start:'top 92%',once:true}}));
       $$('.timeline-entry').forEach(entry=>ScrollTrigger.create({trigger:entry,start:'top 60%',end:'bottom 40%',onToggle:self=>{entry.classList.toggle('is-active',self.isActive);if(self.isActive) changeYear(entry.dataset.timelineYear);}}));
       studioChronicle.setup({animated:true});
       if (desktop()) {
@@ -187,7 +209,7 @@
         ScrollTrigger.create({trigger:sticky,start:'top 125px',end:()=>`+=${Math.max(0,layout.offsetHeight-sticky.offsetHeight)}`,pin:true,pinSpacing:false,invalidateOnRefresh:true});
         const track=$('.gallery-track'),pin=$('.gallery-pin');
         const distance=()=>Math.max(0,track.scrollWidth-innerWidth);
-        const tween=gsap.to(track,{x:()=>-distance(),ease:'none',scrollTrigger:{trigger:pin,start:()=>`top ${parseInt(getComputedStyle(root).getPropertyValue('--header-height'))}px`,end:()=>`+=${distance()*1.12}`,pin:true,scrub:.85,invalidateOnRefresh:true,anticipatePin:1,onUpdate:self=>setGalleryProgress(self.progress)}});
+        const tween=gsap.to(track,{x:()=>-distance(),ease:'none',scrollTrigger:{trigger:pin,start:()=>`top ${headerHeight}px`,end:()=>`+=${distance()*1.12}`,pin:true,scrub:.85,invalidateOnRefresh:true,anticipatePin:1,onUpdate:self=>setGalleryProgress(self.progress)}});
         galleryTrigger=tween.scrollTrigger;
         gsap.to('.hero-artifact',{y:-45,rotation:0,ease:'none',scrollTrigger:{trigger:'.hero',start:'top top',end:'bottom top',scrub:1.2}});
         gsap.fromTo('.worlds-image',{y:60},{y:-40,ease:'none',scrollTrigger:{trigger:'.worlds-intro',start:'top bottom',end:'bottom top',scrub:1.5}});
@@ -196,8 +218,9 @@
       gsap.to('.origins-orbits',{rotation:72,svgOrigin:'250 240',ease:'none',scrollTrigger:{trigger:'.history-origins',start:'top bottom',end:'bottom top',scrub:1.5}});
       gsap.fromTo('.archive-disc',{rotation:-9},{rotation:13,ease:'none',scrollTrigger:{trigger:'.history-disc',start:'top bottom',end:'bottom top',scrub:1.6}});
       frenchSignature.setup({animated:true});
-      gsap.fromTo('.worlds',{'--worlds-blend':0},{'--worlds-blend':1,ease:'none',scrollTrigger:{trigger:'.worlds',start:'top 90%',end:'top 30%',scrub:true}});
+      gsap.fromTo('.worlds-backdrop',{opacity:0},{opacity:1,ease:'none',scrollTrigger:{trigger:'.worlds',start:'top 90%',end:'top 30%',scrub:true}});
     });
+    headlines.setup({animated:true,enabled:root.classList.contains('ready')});
     ScrollTrigger.refresh();lenis?.resize();updateProgress();
   }
   function changeYear(year) {
@@ -212,15 +235,22 @@
   function setGalleryProgress(progress) {
     galleryProgress=progress;
     const index=Math.round(progress*4);
-    $('.gallery-count').textContent=`0${index+1} / 05`;
-    $('.gallery-progress span').style.transform=`scaleX(${Math.max(.03,progress)})`;
+    if(index!==lastGalleryIndex){galleryCount.textContent=`0${index+1} / 05`;lastGalleryIndex=index;}
+    galleryBar.style.transform=`scaleX(${Math.max(.03,progress)})`;
   }
-  const galleryWindow=$('.gallery-window');
-  galleryWindow.addEventListener('scroll',()=>{if(!desktop()||reduced)setGalleryProgress(galleryWindow.scrollLeft/Math.max(1,galleryWindow.scrollWidth-galleryWindow.clientWidth));},{passive:true});
+  const galleryWindow=$('.gallery-window'),galleryTrack=$('.gallery-track'),galleryCount=$('.gallery-count'),galleryBar=$('.gallery-progress span');
+  let lastGalleryIndex=-1,galleryRange=1,galleryStride=0,galleryDistance=1;
+  function measureGallery(){galleryRange=Math.max(1,galleryWindow.scrollWidth-galleryWindow.clientWidth);galleryStride=$('.exhibit-card').offsetWidth+(desktop()?42:22);galleryDistance=Math.max(1,galleryTrack.scrollWidth-innerWidth);}
+  const queueGalleryMeasure=()=>window.museumFrames.read(measureGallery);
+  new ResizeObserver(queueGalleryMeasure).observe(galleryWindow);
+  if(hasGSAP)ScrollTrigger.addEventListener('refresh',queueGalleryMeasure);
+  queueGalleryMeasure();
+  function updateNativeGallery(){if(!desktop()||reduced)setGalleryProgress(galleryWindow.scrollLeft/galleryRange);}
+  galleryWindow.addEventListener('scroll',()=>window.museumFrames.write(updateNativeGallery),{passive:true});
   function moveGallery(direction) {
     const next=clamp(Math.round(galleryProgress*4)+direction,0,4);
     if(galleryTrigger)scrollToTarget(galleryTrigger.start+(galleryTrigger.end-galleryTrigger.start)*next/4);
-    else {const card=$('.exhibit-card');galleryWindow.scrollTo({left:next*(card.offsetWidth+(desktop()?42:22)),behavior:reduced?'instant':'smooth'});}
+    else galleryWindow.scrollTo({left:next*galleryStride,behavior:reduced?'instant':'smooth'});
   }
   $('.gallery-prev').addEventListener('click',()=>moveGallery(-1));$('.gallery-next').addEventListener('click',()=>moveGallery(1));
   $$('.exhibit-card').forEach((card,index)=>card.addEventListener('focusin',()=>{if(keyboardNavigation&&galleryTrigger&&!restoringDialogFocus){const position=galleryTrigger.start+(galleryTrigger.end-galleryTrigger.start)*index/4;if(scrollY<position-20||scrollY>position+innerWidth*.4)scrollToTarget(position,{immediate:true});}}));
@@ -233,16 +263,22 @@
     clearTimeout(dragResetTimer);dragged=false;
     dragging={x:e.clientX,y:e.clientY,scroll:scrollY,left:galleryWindow.scrollLeft,id:e.pointerId};
   });
+  const dragPoint=new Float32Array(2),immediateDrag={immediate:true};
+  function applyGalleryDrag(){
+    if(!dragging||!dragged)return;
+    const delta=dragPoint[0]-dragging.x;
+    if(galleryTrigger){
+      const position=dragging.scroll-delta*(galleryTrigger.end-galleryTrigger.start)/galleryDistance;
+      if(lenis)lenis.scrollTo(position,immediateDrag);else scrollTo(0,position);
+    }else galleryWindow.scrollLeft=dragging.left-delta;
+  }
   addEventListener('pointermove',e=>{
     if(!dragging||e.pointerId!==dragging.id)return;
     const delta=e.clientX-dragging.x,vertical=e.clientY-dragging.y;
     if(!dragged&&Math.abs(vertical)>12&&Math.abs(vertical)>Math.abs(delta)){cancelGalleryDrag();return;}
     if(Math.abs(delta)>12&&Math.abs(delta)>Math.abs(vertical))dragged=true;
     if(!dragged)return;
-    if(galleryTrigger){
-      const total=Math.max(1,$('.gallery-track').scrollWidth-innerWidth);
-      scrollToTarget(dragging.scroll-delta*(galleryTrigger.end-galleryTrigger.start)/total,{immediate:true});
-    }else galleryWindow.scrollLeft=dragging.left-delta;
+    dragPoint[0]=e.clientX;dragPoint[1]=e.clientY;window.museumFrames.write(applyGalleryDrag);
   });
   addEventListener('pointerup',()=>{dragging=null;dragResetTimer=setTimeout(()=>dragged=false,0);});
   addEventListener('pointercancel',cancelGalleryDrag);
@@ -291,6 +327,7 @@
     const rect=image.getBoundingClientRect();
     return {left:rect.left-frame.left,top:rect.top-frame.top,width:rect.width,height:rect.height};
   }
+  function morphTransform(frame,base){return {x:frame.left-base.left,y:frame.top-base.top,scaleX:frame.width/base.width,scaleY:frame.height/base.height,transformOrigin:'0 0'};}
   function createDialogMorph(frame,image,imageFrame) {
     const shell=document.createElement('div');shell.className='dialog-morph';
     shell.setAttribute('aria-hidden','true');shell.inert=true;
@@ -315,10 +352,12 @@
   }
   function finishDialogClose(dialog,restoreFocus) {
     resetDialogTransition();
+    headlines.releaseWithin(dialog);
     dialog.hidden=true;dialog.setAttribute('aria-hidden','true');
     dialog.style.removeProperty('transform');dialog.style.removeProperty('opacity');
     modalBackdrop.hidden=true;activeDialog=null;dialogOpen=false;dialogTrigger=null;
     root.classList.remove('modal-open');document.body.classList.remove('modal-open');
+    dispatchEvent(new Event('lart-dialog-change'));
     root.style.overflow=scrollLock?.root??'';document.body.style.overflow=scrollLock?.body??'';
     scrollLock=null;
     inertStates.forEach((wasInert,element)=>{element.inert=wasInert;});inertStates.clear();
@@ -338,8 +377,10 @@
     cancelGalleryDrag();
     // Keep the actual reading layout stable while an inert visual frame grows from the trigger.
     dialog.hidden=false;dialog.setAttribute('aria-hidden','false');
+    headlines.revealWithin(dialog,{delay:reduced?0:.7});
     modalBackdrop.hidden=false;dialog.scrollTop=0;
     activeDialog=dialog;dialogOpen=true;
+    dispatchEvent(new Event('lart-dialog-change'));
     scrollLock={root:root.style.overflow,body:document.body.style.overflow};
     root.classList.add('modal-open');document.body.classList.add('modal-open');
     root.style.overflow='hidden';document.body.style.overflow='hidden';
@@ -348,20 +389,20 @@
     if(hasGSAP){
       gsap.set('.cursor-dot,.cursor-ring,.floating-preview',{opacity:0});
       if(!reduced&&origin){
-        const destination=frameOf(dialog),shell=createDialogMorph(origin,image,imageOrigin);
-        const transition={dialog,shell,phase:'opening',timeline:null,timer:0};dialogTransition=transition;
+        const destination=frameOf(dialog),targetImage=$('.dialog-image:not([hidden]) img',dialog);
+        const shell=createDialogMorph(destination,image,targetImage?pictureFrame(targetImage,destination):imageOrigin);
+        gsap.set(shell,morphTransform(origin,destination));
+        const transition={dialog,shell,base:destination,phase:'opening',timeline:null,timer:0};dialogTransition=transition;
         const finish=()=>{if(dialogTransition===transition)resetDialogTransition();};
         dialog.classList.add('is-morphing');
         gsap.set(dialog,{opacity:0});gsap.set(modalBackdrop,{opacity:0});
         gsap.set(dialogParts(dialog),{opacity:0,y:18});
         const timeline=gsap.timeline({onComplete:finish});transition.timeline=timeline;
-        timeline.to(shell,{...destination,duration:.86,ease:'power4.inOut'},0)
+        timeline.to(shell,{x:0,y:0,scaleX:1,scaleY:1,duration:.86,ease:'power4.inOut'},0)
           .to(modalBackdrop,{opacity:1,duration:.55,ease:'power3.out'},.04)
           .to(dialog,{opacity:1,duration:.32,ease:'power3.out'},.52)
           .to(dialogParts(dialog),{opacity:1,y:0,duration:.44,stagger:.045,ease:'power3.out'},.58)
           .to(shell,{opacity:0,duration:.22,ease:'power2.out'},.64);
-        const targetImage=$('.dialog-image:not([hidden]) img',dialog);
-        if(image&&targetImage)timeline.to($('img',shell),{...pictureFrame(targetImage,destination),duration:.86,ease:'power4.inOut'},0);
         // A suspended tab or animation ticker must never strand an invisible dialog.
         transition.timer=setTimeout(finish,1500);
       }
@@ -379,17 +420,16 @@
     const shell=existing?.shell||createDialogMorph(source,image,targetImage?pictureFrame(targetImage,source):null);
     if(existing){clearTimeout(existing.timer);existing.timeline?.kill();}
     else gsap.set(shell,{opacity:0});
-    const transition={dialog,shell,phase:'closing',restoreFocus,timeline:null,timer:0};dialogTransition=transition;
+    const base=existing?.base||source;
+    const transition={dialog,shell,base,phase:'closing',restoreFocus,timeline:null,timer:0};dialogTransition=transition;
     const finish=()=>{if(dialogTransition===transition)finishDialogClose(dialog,restoreFocus);};
     dialog.classList.add('is-morphing');
     const timeline=gsap.timeline({onComplete:finish});transition.timeline=timeline;
     timeline.to(dialog,{opacity:0,duration:.15,ease:'power2.out'},0)
       .to(shell,{opacity:1,duration:.12,ease:'power2.out'},0)
-      .to(shell,{...destination,duration:.66,ease:'power4.inOut'},.02)
+      .to(shell,{...morphTransform(destination,base),duration:.66,ease:'power4.inOut'},.02)
       .to(modalBackdrop,{opacity:0,duration:.5,ease:'power3.inOut'},.1)
       .to(shell,{opacity:0,duration:.12,ease:'power2.in'},.56);
-    const picture=$('img',shell);
-    if(picture&&image)timeline.to(picture,{...pictureFrame(image,destination),duration:.66,ease:'power4.inOut'},.02);
     transition.timer=setTimeout(finish,1100);
   }
   function settleDialogTransition() {
@@ -429,7 +469,7 @@
     $('.dialog-catalog').textContent=`THE COLLECTION / ${key.replaceAll('-',' ').toUpperCase()}`;
     $('.dialog-image').hidden=!a.image;
     if(a.image){$('.dialog-image img').src=`assets/${a.image}`;$('.dialog-image img').alt=`${a.title} — exhibition image`;}
-    $('.dialog-year').textContent=a.year;$('#artifact-title').textContent=a.title;$('.dialog-deck').textContent=a.deck;$('.dialog-copy').textContent=a.copy;
+    $('.dialog-year').textContent=a.year;headlines.setContent($('#artifact-title'),a.title,{animate:false,textOnly:true});$('.dialog-deck').textContent=a.deck;$('.dialog-copy').textContent=a.copy;
     const details=$('.dialog-details');details.replaceChildren();
     for(const [label,value] of [['CREATOR / TEAM',a.creator],['STUDIO / ORIGIN',a.studio]]){const cell=document.createElement('div'),small=document.createElement('span'),strong=document.createElement('strong');small.textContent=label;strong.textContent=value;cell.append(small,strong);details.append(cell);}
     $('.dialog-source').href=a.url;$('.dialog-credit').textContent=a.credit;openDialog(artifactDialog,button);
@@ -458,84 +498,29 @@
   });
   document.addEventListener('visibilitychange',()=>{if(audioContext){if(document.hidden)audioContext.suspend();else if(audioEnabled)audioContext.resume();}});
 
-  function initCursor() {
-    if(!hasGSAP||!finePointer.matches)return;
-    const dot=$('.cursor-dot'),ring=$('.cursor-ring');
-    const toX=gsap.quickTo(ring,'x',{duration:.22,ease:'power3.out'}),toY=gsap.quickTo(ring,'y',{duration:.22,ease:'power3.out'});
-    const contentSelector='a,button,input,select,textarea,label,legend,h1,h2,h3,h4,h5,h6,p,li,blockquote,figcaption,td,th,dt,dd,em,strong,small,img,svg,canvas,[data-cursor],[role="button"],[role="tab"],[tabindex="0"],.mono,.era-year,.trail-grid>span';
-    let headingRects=[],regionFrame=0,pointerInside=false;
-    $('span',ring).textContent='';
-    function updateCursorHover(target=document.elementFromPoint(pointer.x,pointer.y)) {
-      const overElement=Boolean(target?.closest?.(contentSelector));
-      // Display headings deliberately ignore pointer events for overlapping artwork.
-      // Cache their visual bounds so their letters still activate the inversion ball.
-      const overHeading=!dialogOpen&&headingRects.some(rect=>pointer.x>=rect.left&&pointer.x<=rect.right&&pointer.y>=rect.top&&pointer.y<=rect.bottom);
-      const overContent=overElement||overHeading;
-      ring.classList.toggle('is-ball',overContent);
-      dot.classList.toggle('is-over-content',overContent);
-    }
-    function refreshCursorRegions() {
-      regionFrame=0;
-      headingRects=$$('h1,h2,h3,h4,h5,h6').map(heading=>heading.getBoundingClientRect())
-        .filter(rect=>rect.width>0&&rect.height>0&&rect.bottom>0&&rect.top<innerHeight);
-      if(pointerInside)updateCursorHover();
-    }
-    function queueCursorRefresh(){if(!regionFrame)regionFrame=requestAnimationFrame(refreshCursorRegions);}
-    document.addEventListener('scroll',queueCursorRefresh,{passive:true,capture:true});
-    addEventListener('resize',queueCursorRefresh,{passive:true});
-    document.fonts.ready.then(queueCursorRefresh);
-    if(window.ResizeObserver)new ResizeObserver(queueCursorRefresh).observe($('#main'));
-    queueCursorRefresh();
-    addEventListener('pointermove',e=>{
-      if(reduced||!desktop()){pointerInside=false;root.classList.remove('custom-cursor');gsap.set([dot,ring],{opacity:0});return;}
-      if(!pointerInside)gsap.set(ring,{x:e.clientX,y:e.clientY});
-      pointerInside=true;root.classList.add('custom-cursor');
-      gsap.set(dot,{x:e.clientX,y:e.clientY,opacity:1});gsap.set(ring,{opacity:1});toX(e.clientX);toY(e.clientY);
-      updateCursorHover(e.target);
-    },{passive:true});
-    document.addEventListener('pointerleave',()=>{pointerInside=false;gsap.to([dot,ring],{opacity:0,duration:.2});root.classList.remove('custom-cursor');});
-    addEventListener('blur',()=>{pointerInside=false;gsap.set([dot,ring],{opacity:0});root.classList.remove('custom-cursor');});
-    $$('.magnetic').forEach(element=>{
-      const x=gsap.quickTo(element,'x',{duration:.65,ease:'power3.out'}),y=gsap.quickTo(element,'y',{duration:.65,ease:'power3.out'});
-      element.addEventListener('pointermove',e=>{if(reduced||!desktop())return;const rect=element.getBoundingClientRect(),dx=e.clientX-rect.left-rect.width/2,dy=e.clientY-rect.top-rect.height/2;x(clamp(dx*.18,-12,12));y(clamp(dy*.22,-10,10));});
-      element.addEventListener('pointerleave',()=>{x(0);y(0);});
-    });
-    $$('.tilt-card').forEach(card=>{
-      const target=$('.image-distort',card);if(!target)return;
-      card.addEventListener('pointermove',e=>{if(reduced||!desktop())return;const b=card.getBoundingClientRect(),x=(e.clientX-b.left)/b.width,y=(e.clientY-b.top)/b.height;card.style.setProperty('--glare-x',`${x*100}%`);card.style.setProperty('--glare-y',`${y*100}%`);gsap.to(target,{rotationX:(.5-y)*3,rotationY:(x-.5)*4,transformPerspective:1200,duration:.7,ease:'power3.out',overwrite:'auto'});});
-      card.addEventListener('pointerleave',()=>gsap.to(target,{rotationX:0,rotationY:0,duration:1,ease:'power3.out'}));
-    });
-    const preview=$('.floating-preview'),previewImage=$('img',preview);
-    const previewX=gsap.quickTo(preview,'x',{duration:.5,ease:'power3.out'}),previewY=gsap.quickTo(preview,'y',{duration:.6,ease:'power3.out'});
-    $$('.ledger-row').forEach(row=>{
-      row.addEventListener('pointerenter',e=>{if(reduced||!desktop())return;const a=artifacts[row.dataset.preview];previewImage.src=`assets/${a.image}`;$('span',preview).textContent=`${a.studio} // ${a.year}`;gsap.set(preview,{x:clamp(e.clientX+80,180,innerWidth-180),y:clamp(e.clientY-90,180,innerHeight-130)});gsap.fromTo(preview,{opacity:0,clipPath:'inset(50% 0 50% 0)'},{opacity:1,clipPath:'inset(0% 0 0% 0)',duration:.4,ease:'power3.out',overwrite:true});});
-      row.addEventListener('pointermove',e=>{if(reduced||!desktop())return;previewX(clamp(e.clientX+90,180,innerWidth-180));previewY(clamp(e.clientY-95,180,innerHeight-130));gsap.to(preview,{rotation:clamp((e.movementX||0)*.25,-8,8),duration:.6,overwrite:'auto'});});
-      row.addEventListener('pointerleave',()=>gsap.to(preview,{opacity:0,rotation:0,duration:.3,overwrite:true}));
-      row.addEventListener('click',()=>gsap.set(preview,{opacity:0}));
-    });
-  }
+  function initCursor(){window.createMuseumCursor({gsap:hasGSAP?gsap:null,isReduced:()=>reduced,isDesktop:desktop,pointerQuery:finePointer,isDialogOpen:()=>dialogOpen,artifacts});}
   initCursor();
   window.createHeroAscii?.({isReduced:()=>reduced,isDialogOpen:()=>dialogOpen});
   window.createCursorFog?.({isReduced:()=>reduced,isDesktop:desktop,pointerQuery:finePointer});
   const trailGrid=$('.trail-grid');
-  for(let i=0;i<108;i++){const cell=document.createElement('span');let timer;cell.addEventListener('pointerenter',()=>{if(reduced)return;clearTimeout(timer);cell.classList.add('active');timer=setTimeout(()=>cell.classList.remove('active'),100);});trailGrid.append(cell);}
+  window.createFooterTrail(trailGrid,()=>reduced);
 
   function initAmbientFallback() {
     const surface=$('.ambient-fallback'),position={x:0,y:0};
     let frame=0,lastFrame=0;
     const draw=time=>{
       frame=0;
-      if(document.hidden||reduced)return;
+      if(document.hidden||reduced||dialogOpen)return;
       const dt=lastFrame?Math.min((time-lastFrame)*.001,.05):1/60;lastFrame=time;
       position.x=damp(position.x,(pointer.nx-.5)*45,5,dt);
       position.y=damp(position.y,(.5-pointer.ny)*35,5,dt);
       surface.style.transform=`translate3d(${position.x.toFixed(3)}px,${position.y.toFixed(3)}px,0)`;
       frame=requestAnimationFrame(draw);
     };
-    const sync=()=>{cancelAnimationFrame(frame);frame=0;lastFrame=0;if(!document.hidden&&!reduced)frame=requestAnimationFrame(draw);};
+    const sync=()=>{cancelAnimationFrame(frame);frame=0;lastFrame=0;if(!document.hidden&&!reduced&&!dialogOpen)frame=requestAnimationFrame(draw);};
     document.addEventListener('visibilitychange',sync);
-    addEventListener('lart-motion-change',sync);sync();
-    return ()=>{cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',sync);removeEventListener('lart-motion-change',sync);};
+    addEventListener('lart-motion-change',sync);addEventListener('lart-dialog-change',sync);sync();
+    return ()=>{cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',sync);removeEventListener('lart-motion-change',sync);removeEventListener('lart-dialog-change',sync);};
   }
 
   function initWebGL() {
@@ -544,7 +529,8 @@
     let renderer;
     try { renderer=new THREE.WebGLRenderer({canvas,alpha:false,antialias:false,powerPreference:'high-performance'}); } catch {canvas.hidden=true;initAmbientFallback();return;}
     // Keep fill cost bounded on large / Retina screens without capping frame rate.
-    const pixelRatio=()=>Math.min(devicePixelRatio,1.5,Math.sqrt(2000000/(innerWidth*innerHeight)));
+    const budget=window.createRenderBudget({onChange:()=>{renderer.setPixelRatio(pixelRatio());renderer.setSize(innerWidth,innerHeight);}});
+    const pixelRatio=()=>Math.min(devicePixelRatio,1.25,Math.sqrt(budget.pixels/(innerWidth*innerHeight)));
     renderer.setPixelRatio(pixelRatio());renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.LinearSRGBColorSpace;
     const motion={x:.5,y:.5,vx:0,vy:0},wake={x:.5,y:.5,vx:0,vy:0};
     const uniforms={
@@ -565,7 +551,6 @@
       uniform vec2 uResolution;
       uniform vec4 uRipples[4];
       uniform vec3 uPaper,uCream,uStone,uBlue;
-      float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       void main(){
         float aspect=uResolution.x/uResolution.y;
         vec2 uv=vUv;vec2 p=uv*vec2(aspect,1.);vec2 m=uMouse*vec2(aspect,1.);
@@ -594,7 +579,7 @@
         // Denser elevation bands continuously arrive as the field drifts through them.
         float level=field*14.5-uTime*.32;
         float edge=max(fwidth(level),.0005);
-        float grain=(hash(gl_FragCoord.xy)-.5)*.008;
+        // The static DOM grain supplies paper texture without another per-pixel hash.
         vec3 paper=uPaper,cream=uCream;
         vec3 stone=uStone,blue=uBlue;
         // A soft blue crest travels along the field, coloring only its contour ink.
@@ -608,7 +593,7 @@
         vec3 ink=mix(stone,blue,blueAmount);
         vec3 color=mix(paper,cream,.12+.06*sin(field*2.+uTime*.25));
         color=mix(color,ink,contours*(.22+pulse*.38+influence*.10));
-        color=mix(color,blue,influence*uVelocity*.010)+grain;
+        color=mix(color,blue,influence*uVelocity*.010);
         gl_FragColor=vec4(color,1.);
       }`});
     const scene=new THREE.Scene();scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),material));const camera=new THREE.Camera();
@@ -619,11 +604,12 @@
         const color=new THREE.Color(palette[key]).convertLinearToSRGB();
         uniforms[uniform].value.set(color.r,color.g,color.b);
       }
-      if(!contextLost)renderer.render(scene,camera);
+      if(!contextLost&&!frame)renderer.render(scene,camera);
     });
     const render=time=>{
       frame=0;
-      if(document.hidden||reduced||contextLost)return;
+      if(document.hidden||reduced||contextLost||dialogOpen)return;
+      if(lastFrame)budget.sample(time-lastFrame);
       const dt=lastFrame?Math.min((time-lastFrame)*.001,.05):1/60;lastFrame=time;
       ambientElapsed+=dt;uniforms.uTime.value=ambientElapsed;
       if(pointer.moved&&!pointerEstablished){motion.x=wake.x=pointer.nx;motion.y=wake.y=pointer.ny;pointerEstablished=true;}
@@ -635,18 +621,19 @@
       uniforms.uVelocity.value=damp(uniforms.uVelocity.value,Math.min(speed*.65,1),4,dt);
       uniforms.uPresence.value=damp(uniforms.uPresence.value,pointer.active?1:0,3.5,dt);
       uniforms.uScroll.value=damp(uniforms.uScroll.value,scrollY/innerHeight,4,dt);
-      ripples.forEach((ripple,index)=>uniforms.uRipples.value[index].set(ripple.x,ripple.y,ripple.time,1));
+      for(let i=0;i<ripples.length;i++){const ripple=ripples[i];uniforms.uRipples.value[i].set(ripple.x,ripple.y,ripple.time,1);}
       renderer.render(scene,camera);frame=requestAnimationFrame(render);
     };
     const syncAmbient=()=>{
-      cancelAnimationFrame(frame);frame=0;lastFrame=0;
-      if(document.hidden||contextLost)return;
+      cancelAnimationFrame(frame);frame=0;lastFrame=0;budget.reset();
+      if(document.hidden||contextLost||dialogOpen)return;
       if(reduced)renderer.render(scene,camera);else frame=requestAnimationFrame(render);
     };
     canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();contextLost=true;cancelAnimationFrame(frame);frame=0;canvas.style.opacity='0';root.classList.remove('webgl-active');stopFallback=initAmbientFallback();});
     canvas.addEventListener('webglcontextrestored',()=>{contextLost=false;stopFallback?.();stopFallback=null;canvas.style.opacity='';root.classList.add('webgl-active');syncAmbient();});
     document.addEventListener('visibilitychange',syncAmbient);
     addEventListener('lart-motion-change',syncAmbient);
+    addEventListener('lart-dialog-change',syncAmbient);
     addEventListener('pagehide',()=>{cancelAnimationFrame(frame);frame=0;lastFrame=0;});
     addEventListener('pageshow',syncAmbient);
     renderer.render(scene,camera);root.classList.add('webgl-active');syncAmbient();
@@ -654,16 +641,14 @@
 
   }
   initWebGL();
-  window.createImagePlanes({THREE:window.THREE,isReduced:()=>reduced,isDesktop:desktop,pointerQuery:finePointer});
+  window.createImagePlanes({THREE:window.THREE,isReduced:()=>reduced,isDesktop:desktop,pointerQuery:finePointer,isDialogOpen:()=>dialogOpen});
   if(hasGSAP) {
-    const compass=$('.compass');let angle=0,lastSkew='',lastStretch='';
+    const compass=$('.compass');let angle=0;
     gsap.ticker.add((time,deltaTime)=>{
-      if(reduced)return;
+      if(reduced||document.hidden)return;
       const dt=Math.min(deltaTime*.001,.05);
       velocitySmoothed=damp(velocitySmoothed,scrollVelocity,4,dt);scrollVelocity*=Math.exp(-2.5*dt);
-      const skew=clamp(velocitySmoothed/1800,-1.5,1.5).toFixed(3),stretch=clamp(Math.abs(velocitySmoothed)/180000,0,.018).toFixed(4);
-      if(skew!==lastSkew){root.style.setProperty('--scroll-velocity',skew);lastSkew=skew;}
-      if(stretch!==lastStretch){root.style.setProperty('--scroll-stretch',stretch);lastStretch=stretch;}
+      scrollKinetics.update(velocitySmoothed);
       if(Math.abs(velocitySmoothed)>.1){angle+=clamp(velocitySmoothed*.042,-90,90)*dt;compass.style.transform=`rotate(${angle}deg)`;}
     });
   }
@@ -677,7 +662,7 @@
     heroEntranceTimeline?.kill();heroEntranceTimeline=null;
     settleHeroTitle();
     if(hasGSAP){
-      gsap.set('.hero-artifact',{clearProps:'clipPath,opacity,visibility'});
+      gsap.set('.hero-artifact',{clearProps:'clipPath,scale,opacity,visibility'});
       gsap.set('.site-header,.hero-intro,.hero-kicker,.hero-side-note,.hero-bottom',{clearProps:'transform,opacity,visibility'});
     }
     root.classList.remove('entrance-pending');
@@ -687,12 +672,12 @@
     if(!hasGSAP||reduced)return;
     const lines=$$('.hero-line');
     root.classList.add('hero-title-entering');
-    gsap.set('.hero-line-text',{xPercent:-18,autoAlpha:0});
-    gsap.set('.hero-line-wipe',{x:0,xPercent:-102,scaleX:1,transformOrigin:'100% 50%',visibility:'visible'});
+    gsap.set('.hero-line-text',{xPercent:18,autoAlpha:0});
+    gsap.set('.hero-line-wipe',{x:0,xPercent:102,scaleX:1,transformOrigin:'0% 50%',visibility:'visible'});
     heroTitleTimeline=gsap.timeline({paused,onComplete:settleHeroTitle});
     lines.forEach((line,index)=>{
       const block=$('.hero-line-wipe',line),text=$('.hero-line-text',line),start=.28+index*.18;
-      // Sweep in first; then collapse toward the right to uncover the moving text.
+      // Sweep from the right; collapse toward the left to release the following text.
       heroTitleTimeline
         .to(block,{xPercent:0,duration:.58,ease:'power3.inOut'},start)
         .set(text,{autoAlpha:1},start+.6)
@@ -703,23 +688,23 @@
   function prepareHeroEntrance() {
     // Seed every initial state while the opaque curtain still covers the page.
     animateHeroTitle(true);
-    gsap.set('.hero-artifact',{clipPath:'inset(100% 0 0 0)',autoAlpha:0});
+    gsap.set('.hero-artifact',{scale:.94,autoAlpha:0});
     gsap.set('.hero-intro,.hero-kicker,.hero-side-note,.hero-bottom',{y:20,autoAlpha:0});
     gsap.set('.site-header',{y:-12,autoAlpha:0});
     heroEntranceTimeline=gsap.timeline({paused:true,onComplete:()=>{
-      gsap.set('.hero-artifact',{clearProps:'clipPath,opacity,visibility'});
+      gsap.set('.hero-artifact',{clearProps:'clipPath,scale,opacity,visibility'});
       gsap.set('.site-header,.hero-intro,.hero-kicker,.hero-side-note,.hero-bottom',{clearProps:'transform,opacity,visibility'});
       heroEntranceTimeline=null;
     }})
       .to('.site-header',{y:0,autoAlpha:1,duration:.85,ease:'power3.out'},.12)
-      .to('.hero-artifact',{clipPath:'inset(0% 0 0 0)',autoAlpha:1,duration:1.6,ease:'power4.inOut'},.12)
+      .to('.hero-artifact',{scale:1,autoAlpha:1,duration:1.6,ease:'power4.inOut'},.12)
       .to('.hero-intro,.hero-kicker,.hero-side-note,.hero-bottom',{y:0,autoAlpha:1,duration:1,stagger:.1,ease:'power3.out'},.4);
     // Inline GSAP states now own visibility; CSS covered the earlier first paint.
     root.classList.remove('entrance-pending');
   }
   function finishOpening() {
     $('.preloader')?.remove();
-    root.classList.add('ready');document.body.classList.remove('loading');lenis?.start();
+    root.classList.add('ready');document.body.classList.remove('loading');lenis?.start();headlines.start();
     setTimeout(()=>{
       if(hasGSAP)ScrollTrigger.refresh();
       if(location.hash){const destination=targetFromHash(location.hash);if(destination)scrollToTarget(destination,{immediate:true});}
@@ -743,18 +728,18 @@
     lenis?.stop();
     prepareHeroEntrance();
     const loader=$('.preloader'),paths=$$('.loader-emblem path');
-    paths.forEach(path=>{const length=path.getTotalLength();gsap.set(path,{strokeDasharray:length,strokeDashoffset:length});});
+    gsap.set(paths,{opacity:.08});
     const count={value:0},countLabel=$('.loader-count'),yearLabel=$('.loader-year'),logLabel=$('.loader-log');
     const years=['1983','1991','1998','2012','PRESENT'];
     const logs=['INDEXING // THE FIRST PIXELS','LOADING // ANOTHER_WORLD_POLYGON_DATA','MAPPING // THE AUTEUR GENERATION','TRACING // WORLDS_WITHOUT_LIMITS','ARCHIVE READY // ENTER THE EXHIBITION'];
-    const loadingDuration=5.7,curtainStart=loadingDuration+.15;
+    const loadingDuration=5.7,curtainStart=loadingDuration+.15;let lastLoadingCount=-1,lastLoadingIndex=-1;
     const timeline=gsap.timeline({onComplete:()=>{launchTimeline=null;finishOpening();}});launchTimeline=timeline;
     timeline
-      .to(paths,{strokeDashoffset:0,duration:3.6,stagger:.1,ease:'power2.inOut'},0)
+      .to(paths,{opacity:1,duration:3.6,stagger:.1,ease:'power2.inOut'},0)
       .to(count,{value:100,duration:loadingDuration,ease:'power2.inOut',onUpdate:()=>{
         const n=Math.round(count.value),index=Math.min(4,Math.floor(n/22));
-        countLabel.textContent=String(n).padStart(3,'0')+'%';
-        yearLabel.textContent=years[index];logLabel.textContent=logs[index];
+        if(n!==lastLoadingCount){countLabel.textContent=String(n).padStart(3,'0')+'%';lastLoadingCount=n;}
+        if(index!==lastLoadingIndex){yearLabel.textContent=years[index];logLabel.textContent=logs[index];lastLoadingIndex=index;}
       }},0)
       .call(()=>loader.classList.remove('is-glitching'),null,loadingDuration)
       .to('.loader-top,.loader-center,.loader-bottom',{opacity:0,y:-20,duration:.3,stagger:.04,ease:'power3.in'},loadingDuration+.05)

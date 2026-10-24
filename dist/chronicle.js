@@ -15,7 +15,8 @@
   window.createStudioChronicle = ({gsap,ScrollTrigger,isReduced,isDialogOpen,isNavigating=()=>false,scrollTo}) => {
     const chapter=document.querySelector('#studio-growth');
     if(!chapter)return {setup(){},reset(){}};
-    const $=selector=>chapter.querySelector(selector);
+    const nodes=new Map();
+    const $=selector=>{if(!nodes.has(selector))nodes.set(selector,chapter.querySelector(selector));return nodes.get(selector);};
     const stage=$('.chronicle-stage'),panel=$('.chronicle-panel'),chart=$('#studios-chart');
     const buttons=[...chapter.querySelectorAll('[data-chart-year]')];
     const points=records.map((record,index)=>({x:68+96*index,y:340-record.count*40}));
@@ -42,7 +43,7 @@
     records.forEach((record,i)=>{
       const point=points[i],height=record.count*40;
       create('rect',{x:point.x-20,y:point.y,width:40,height,'aria-hidden':'true'},$('.chronicle-ghost-bars'));
-      bars.push(create('rect',{x:point.x-20,y:340,width:40,height:0},$('.chronicle-bars')));
+      bars.push(create('rect',{x:point.x-20,y:point.y,width:40,height},$('.chronicle-bars')));
       dots.push(create('circle',{cx:point.x,cy:point.y,r:4},$('.chronicle-points')));
       labels.push(create('text',{x:point.x,y:382,'text-anchor':'middle'},$('.chronicle-axis')));
       labels[i].textContent=record.year;
@@ -50,6 +51,7 @@
       hit.addEventListener('click',()=>selectYear(i));
     });
     line.style.strokeDasharray=String(total);
+    const plot=window.createChroniclePlot?.(chart);
     const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
     const padded=number=>String(number).padStart(2,'0');
 
@@ -59,7 +61,7 @@
       chapter.dataset.activeYear=String(record.year);
       $('.chronicle-year').textContent=record.year;
       $('.chronicle-kicker').textContent=record.kicker;
-      $('#chronicle-story-title').innerHTML=record.title.replaceAll('<br>','<br> ');
+      if(window.lartHeadlines)window.lartHeadlines.setContent($('#chronicle-story-title'),record.title.replaceAll('<br>','<br> '),{animate});else $('#chronicle-story-title').innerHTML=record.title.replaceAll('<br>','<br> ');
       $('.chronicle-copy').textContent=record.copy;
       $('.chronicle-studios').textContent=record.studios;
       $('.chronicle-context').textContent=record.context;
@@ -88,17 +90,20 @@
       const point=points[whole],next=points[Math.min(whole+1,7)];
       const x=point.x+(next.x-point.x)*fraction,y=point.y+(next.y-point.y)*fraction;
       const travelled=lengths[whole]+(lengths[Math.min(whole+1,7)]-lengths[whole])*fraction;
+      const gpu=plot?.draw(value,baseline,unit);
+      if(!gpu){
       line.style.strokeDashoffset=String(total-travelled);
-      const visited=points.slice(0,whole+1).map(p=>p.x+' '+p.y).join(' L');
+      let visited='';for(let i=0;i<=whole;i++)visited+=(i?' L':'')+points[i].x+' '+points[i].y;
       area.setAttribute('d','M68 '+baseline+' L'+visited+' L'+x+' '+y+' L'+x+' '+baseline+' Z');
       guide.setAttribute('d','M'+x+' 25V'+baseline);
-      for(const head of heads){head.setAttribute('cx',x);head.setAttribute('cy',y);}
-      bars.forEach((bar,i)=>{
+      for(let i=0;i<heads.length;i++)heads[i].style.transform='translate3d('+(x-68)+'px,'+(y-340)+'px,0)';
+      }
+      for(let i=0;i<bars.length;i++){const bar=bars[i];
         const growth=clamp(step-i+1,0,1),height=records[i].count*unit*growth;
-        if(height!==barHeights[i]){bar.setAttribute('height',height);bar.setAttribute('y',baseline-height);barHeights[i]=height;}
+        if(!gpu&&height!==barHeights[i]){bar.style.transform='scale3d(1,'+growth+',1)';barHeights[i]=height;}
         const reached=i<=step+.001;
         if(reached!==pointReached[i]){dots[i].classList.toggle('is-reached',reached);pointReached[i]=reached;}
-      });
+      }
       panel.style.setProperty('--chronicle-progress',String(value));
       showYear(Math.round(step),animate);
     }
@@ -136,7 +141,7 @@
       lengths.length=1;
       points.forEach((point,i)=>{
         point.y=baseline-records[i].count*unit;
-        dots[i].setAttribute('cy',point.y);
+        dots[i].setAttribute('cy',point.y);bars[i].setAttribute('y',point.y);bars[i].setAttribute('height',records[i].count*unit);
         labels[i].setAttribute('y',compact?252:382);
         const ghost=$('.chronicle-ghost-bars').children[i];
         ghost.setAttribute('y',point.y);ghost.setAttribute('height',records[i].count*unit);
@@ -209,8 +214,8 @@
       $('.chronicle-instruction').textContent=canPin?(innerWidth<=760?'SCROLL / PAUSE TO LOCK':'SCROLL TO TRAVEL · PAUSE TO LOCK A YEAR'):'SELECT A YEAR · USE ← → TO EXPLORE';
       if(!canPin){draw(Math.max(0,index)/7,false);return;}
       const header=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-height'));
-      entry=gsap.fromTo(panel,{scale:.94,clipPath:'inset(28px 4.2%)'},{
-        scale:1,clipPath:'inset(0px 0%)',ease:'none',
+      entry=gsap.fromTo(panel,{scale:.94,opacity:.6},{
+        scale:1,opacity:1,ease:'none',
         scrollTrigger:{trigger:stage,start:'top 90%',end:()=> 'top '+header()+'px',scrub:.55,invalidateOnRefresh:true}
       });
       playhead.value=0;

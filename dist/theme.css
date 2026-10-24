@@ -1,4 +1,4 @@
-/* Registered colour tokens blend the whole gallery without animating layout. */
+/* Theme tokens change once; interpolating inherited colors repaints the entire page. */
 @property --bg-primary{syntax:"<color>";inherits:true;initial-value:#F6F5F0}
 @property --bg-secondary{syntax:"<color>";inherits:true;initial-value:#EAE6DF}
 @property --border-hairline{syntax:"<color>";inherits:true;initial-value:#D2CDC5}
@@ -25,12 +25,13 @@
  --on-accent:#171E30;
  --modal-shade:rgba(0,0,0,.66);
 }
-:root.theme-ready{transition:--bg-primary var(--theme-duration) var(--theme-ease),--bg-secondary var(--theme-duration) var(--theme-ease),--border-hairline var(--theme-duration) var(--theme-ease),--text-primary var(--theme-duration) var(--theme-ease),--text-secondary var(--theme-duration) var(--theme-ease),--accent-primary var(--theme-duration) var(--theme-ease),--accent-secondary var(--theme-duration) var(--theme-ease),--bg-sculpture var(--theme-duration) var(--theme-ease),--contour-ink var(--theme-duration) var(--theme-ease),--on-accent var(--theme-duration) var(--theme-ease),--modal-shade var(--theme-duration) var(--theme-ease)}
+:root.theme-ready{transition:none}
 html{background:var(--bg-primary)}
 .site-header{background:color-mix(in srgb,var(--bg-primary) 92%,transparent)}
 .chronicle-panel{background:color-mix(in srgb,var(--bg-primary) 97%,transparent)}
 .chart-panel{background:color-mix(in srgb,var(--bg-primary) 40%,transparent)}
-.worlds{background:color-mix(in srgb,var(--bg-primary),var(--bg-secondary) calc(var(--worlds-blend,1) * 100%))}
+.worlds{position:relative;isolation:isolate;background:var(--bg-primary)}
+.worlds-backdrop{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--bg-secondary);opacity:1}
 .signature-installation{background:var(--bg-sculpture)}
 .signature-guide{stroke:var(--accent-primary)}
 .signature-stage::before{background:radial-gradient(ellipse at 27% 50%,color-mix(in srgb,var(--accent-primary) 4%,transparent),transparent 58%)}

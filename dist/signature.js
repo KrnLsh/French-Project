@@ -14,7 +14,8 @@
   const tabs=[...section.querySelectorAll('[data-signature-theme]')],playhead={value:0};
   let index=-1,trigger=null,animation=null,entry=null,selectingUntil=0,announcement=0;
   let visible=false,frame=0,lastTime=0,elapsed=0,poseValue=0,contextLost=false;
-  const mouse={x:0,y:0,tx:0,ty:0};
+  const mouse=new Float32Array(4),artGeometry=window.createFrameGeometry(art),artBounds=artGeometry.bounds;
+  const fallbackForm=$('.signature-fallback-form');
   const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
   const damp=(a,b,rate,dt)=>a+(b-a)*-Math.expm1(-rate*dt);
   function showTheme(next,animate=true){
@@ -22,7 +23,7 @@
    index=next;const theme=themes[next];
    section.dataset.signatureTheme=String(next);
    $('.signature-number').textContent=theme.number;
-   $('#signature-story-title').innerHTML=theme.title;
+   if(window.lartHeadlines)window.lartHeadlines.setContent($('#signature-story-title'),theme.title,{animate});else $('#signature-story-title').innerHTML=theme.title;
    $('.signature-copy').textContent=theme.copy;
    $('.signature-principle>p').textContent=theme.principle;
    $('.signature-form-name').textContent=theme.name;
@@ -68,53 +69,62 @@
    });
   });
   art.addEventListener('pointermove',event=>{
-   const r=art.getBoundingClientRect();
-   mouse.tx=(event.clientX-r.left)/r.width-.5;mouse.ty=(event.clientY-r.top)/r.height-.5;
+   if(artBounds[2]&&artBounds[3]){mouse[2]=(event.clientX-artBounds[0])/artBounds[2]-.5;mouse[3]=(event.clientY-artBounds[1])/artBounds[3]-.5;}
   },{passive:true});
-  art.addEventListener('pointerleave',()=>{mouse.tx=0;mouse.ty=0;});
+  art.addEventListener('pointerleave',()=>{mouse[2]=mouse[3]=0;});
 
-  /* One shared vertex field drives a membrane, a structural lattice, and its spines.
-     Morphs interpolate parameters, not unrelated meshes, so every edge stays attached. */
-  let renderer=null,scene,camera,sculpture,geometry,positions,wireGeometry,spineGeometry,spinePositions,nodeGeometry,nodePositions;
-  const rings=38,sides=64,vertices=(rings+1)*(sides+1);
-  const rows=Array.from({length:rings+1},(_,r)=>{const u=r/rings*2-1;return {u,taper:Math.pow(Math.max(0,1-Math.abs(u)),.94),envelope:Math.sin((u+1)*Math.PI*.5),bend:Math.sin(u*Math.PI)};});
-  const columns=Array.from({length:sides+1},(_,c)=>{const theta=c/sides*Math.PI*2;return {theta,cos2:Math.cos(theta*2)};});
-  const pose=new Float64Array(5),nodeVertices=[0,rings*(sides+1),Math.floor(rings/2)*(sides+1),Math.floor(rings/2)*(sides+1)+sides/2];
+  // All vertices remain static parameters. The GPU evaluates the membrane in parallel.
+  let renderer=null,scene,camera,sculpture,shapeUniforms;
+  const rings=38,sides=64,vertices=(rings+1)*(sides+1),pose=new Float32Array(5);
   const canvas=$('.signature-canvas');
+  const deformation=`
+    uniform vec4 uShape;
+    uniform float uAsymmetry,uPulse,uTime;
+    vec3 surface(float theta,float u){
+      float taper=pow(max(0.,1.-abs(u)),.94),envelope=sin((u+1.)*3.14159265*.5),bend=sin(u*3.14159265);
+      float travelling=sin(theta*3.+u*5.-uTime*.7);
+      float angle=theta+uShape.y*u+bend*uPulse*travelling*.72;
+      float rib=1.+cos(theta*4.+u*3.+uTime*.35)*(uShape.z*.19+uPulse*.11)*envelope;
+      float x=cos(angle)*taper*2.70*uShape.w*rib;
+      float y=u*(u>0.?2.62:2.92)+sin(theta*3.+u*4.+uTime*.45)*uShape.z*envelope*.16;
+      float z=sin(angle)*taper*(uShape.x+uPulse*.68)+sin(theta*4.+u*5.-uTime*.55)*uShape.z*envelope*.46+uAsymmetry*taper*cos(theta*2.);
+      return vec3(x,y,z);
+    }
+    void main(){gl_Position=projectionMatrix*modelViewMatrix*vec4(surface(position.x,position.y),1.);gl_PointSize=5.5;}
+  `;
   function createSculpture(){
    if(!window.THREE)return;
    const T=window.THREE;
-   try{renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'});}catch{return;}
+   try{renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:false,powerPreference:'high-performance'});}catch{return;}
    renderer.setClearColor(0x000000,0);renderer.outputColorSpace=T.SRGBColorSpace;
    scene=new T.Scene();camera=new T.PerspectiveCamera(36,1,.1,60);camera.position.z=11.8;
    sculpture=new T.Group();scene.add(sculpture);
-   positions=new Float32Array(vertices*3);
-   geometry=new T.BufferGeometry();
-   geometry.setAttribute('position',new T.BufferAttribute(positions,3).setUsage(T.DynamicDrawUsage));
-   const triangles=[],lattice=[];
+   shapeUniforms={uShape:{value:new T.Vector4()},uAsymmetry:{value:0},uPulse:{value:0},uTime:{value:0},uColor:{value:new T.Vector3(0,.1843,.6549)}};
+   const params=new Float32Array(vertices*3),triangles=[],lattice=[];
+   for(let r=0;r<=rings;r++)for(let c=0;c<=sides;c++){
+    const offset=(r*(sides+1)+c)*3;params[offset]=c/sides*Math.PI*2;params[offset+1]=r/rings*2-1;
+   }
    for(let r=0;r<rings;r++)for(let c=0;c<sides;c++){
     const a=r*(sides+1)+c,b=a+1,d=a+sides+1,e=d+1;
-    triangles.push(a,d,b,b,d,e);
-    lattice.push(a,b,a,d);
-    if((r+c)%4===0)lattice.push(a,e);
+    triangles.push(a,d,b,b,d,e);lattice.push(a,b,a,d);if((r+c)%4===0)lattice.push(a,e);
    }
-   geometry.setIndex(triangles);
-   const membrane=new T.Mesh(geometry,new T.MeshBasicMaterial({color:0x002fa7,transparent:true,opacity:.028,side:T.DoubleSide,depthWrite:false}));
-   sculpture.add(membrane);
-   wireGeometry=new T.BufferGeometry();wireGeometry.setAttribute('position',geometry.attributes.position);wireGeometry.setIndex(lattice);
-   sculpture.add(new T.LineSegments(wireGeometry,new T.LineBasicMaterial({color:0x002fa7,transparent:true,opacity:.33,depthWrite:false})));
-   spinePositions=new Float32Array(rings*4*6);spineGeometry=new T.BufferGeometry();
-   spineGeometry.setAttribute('position',new T.BufferAttribute(spinePositions,3).setUsage(T.DynamicDrawUsage));
-   sculpture.add(new T.LineSegments(spineGeometry,new T.LineBasicMaterial({color:0x002fa7,transparent:true,opacity:.9,depthWrite:false})));
-   nodePositions=new Float32Array(4*3);nodeGeometry=new T.BufferGeometry();
-   nodeGeometry.setAttribute('position',new T.BufferAttribute(nodePositions,3).setUsage(T.DynamicDrawUsage));
-   sculpture.add(new T.Points(nodeGeometry,new T.PointsMaterial({color:0x002fa7,size:5.5,sizeAttenuation:false,transparent:true,opacity:.9})));
+   function geometry(values,indices){const result=new T.BufferGeometry();result.setAttribute('position',new T.BufferAttribute(values,3));if(indices)result.setIndex(indices);return result;}
+   function material(opacity){return new T.ShaderMaterial({uniforms:{...shapeUniforms,uOpacity:{value:opacity}},vertexShader:deformation,fragmentShader:'uniform vec3 uColor;uniform float uOpacity;void main(){gl_FragColor=vec4(uColor,uOpacity);}',transparent:true,side:T.DoubleSide,depthWrite:false});}
+   const membrane=new T.Mesh(geometry(params,triangles),material(.028));membrane.frustumCulled=false;sculpture.add(membrane);
+   const wire=new T.LineSegments(geometry(params,lattice),material(.33));wire.frustumCulled=false;sculpture.add(wire);
+   const spines=new Float32Array(rings*4*6);let offset=0;
+   for(let c=0;c<4;c++)for(let r=0;r<rings;r++)for(let end=0;end<2;end++){
+    spines[offset++]=c*Math.PI*.5;spines[offset++]=(r+end)/rings*2-1;spines[offset++]=0;
+   }
+   const spine=new T.LineSegments(geometry(spines),material(.9));spine.frustumCulled=false;sculpture.add(spine);
+   const nodes=new Float32Array([0,-1,0,0,1,0,0,0,0,Math.PI,0,0]);
+   const points=new T.Points(geometry(nodes),material(.9));points.frustumCulled=false;sculpture.add(points);
    section.classList.add('has-sculpture');
   }
   function resize(){
    if(!renderer)return;
    const width=Math.max(1,canvas.clientWidth),height=Math.max(1,canvas.clientHeight);
-   renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));
+   renderer.setPixelRatio(Math.min(devicePixelRatio,1.25,Math.sqrt(850000/(width*height))));
    renderer.setSize(width,height,false);camera.aspect=width/height;
    camera.position.z=9.8*Math.max(1,1.04/camera.aspect);camera.updateProjectionMatrix();
    renderOnce();
@@ -128,56 +138,35 @@
    for(let i=0;i<pose.length;i++)pose[i]=from[i]+(to[i]-from[i])*t;
    if(!renderer||contextLost){
     const skew=Math.sin(poseValue*2)*36;
-    $('.signature-fallback-form').setAttribute('transform','rotate('+(poseValue*12)+' 320 320) skewX('+skew*.3+')');
+    fallbackForm.setAttribute('transform','rotate('+(poseValue*12)+' 320 320) skewX('+skew*.3+')');
     return;
    }
-   const [depth,twist,fold,width,asymmetry]=pose;
    const time=isReduced()?0:elapsed;
-   mouse.x=damp(mouse.x,mouse.tx,5,dt);mouse.y=damp(mouse.y,mouse.ty,5,dt);
-   for(let r=0;r<=rings;r++){
-    const {u,taper,envelope,bend}=rows[r];
-    for(let c=0;c<=sides;c++){
-     const {theta,cos2}=columns[c];
-     const travelling=Math.sin(theta*3+u*5-time*.7);
-     const angle=theta+twist*u+bend*pulse*travelling*.72;
-     const rib=1+Math.cos(theta*4+u*3+time*.35)*(fold*.19+pulse*.11)*envelope;
-     const x=Math.cos(angle)*taper*2.70*width*rib;
-     const y=u*(u>0?2.62:2.92)+Math.sin(theta*3+u*4+time*.45)*fold*envelope*.16;
-     const z=Math.sin(angle)*taper*(depth+pulse*.68)+Math.sin(theta*4+u*5-time*.55)*fold*envelope*.46+asymmetry*taper*cos2;
-     const offset=(r*(sides+1)+c)*3;
-     positions[offset]=x;positions[offset+1]=y;positions[offset+2]=z;
-    }
-   }
-   geometry.attributes.position.needsUpdate=true;
-   let offset=0;
-   for(let c=0;c<4;c++)for(let r=0;r<rings;r++)for(let end=0;end<2;end++){
-    const vertex=((r+end)*(sides+1)+c*sides/4)*3;
-    spinePositions[offset++]=positions[vertex];spinePositions[offset++]=positions[vertex+1];spinePositions[offset++]=positions[vertex+2];
-   }
-   spineGeometry.attributes.position.needsUpdate=true;
-   nodeVertices.forEach((vertex,i)=>{for(let axis=0;axis<3;axis++)nodePositions[i*3+axis]=positions[vertex*3+axis];});
-   nodeGeometry.attributes.position.needsUpdate=true;
-   sculpture.rotation.set(.08+Math.sin(time*.22)*.035+mouse.y*.16,.35+poseValue*.21+Math.sin(time*.18)*.10+mouse.x*.24,Math.sin(time*.15)*.025+Math.sin(poseValue*1.8)*.08);
+   mouse[0]=damp(mouse[0],mouse[2],5,dt);mouse[1]=damp(mouse[1],mouse[3],5,dt);
+   shapeUniforms.uShape.value.set(pose[0],pose[1],pose[2],pose[3]);
+   shapeUniforms.uAsymmetry.value=pose[4];shapeUniforms.uPulse.value=pulse;shapeUniforms.uTime.value=time;
+   sculpture.rotation.set(.08+Math.sin(time*.22)*.035+mouse[1]*.16,.35+poseValue*.21+Math.sin(time*.18)*.10+mouse[0]*.24,Math.sin(time*.15)*.025+Math.sin(poseValue*1.8)*.08);
    sculpture.position.y=.12+Math.sin(time*.5)*.045;
    renderer.render(scene,camera);
   }
   function renderOnce(){renderSculpture(1/60,true);}
   function tick(time){
    frame=0;
-   if(!visible||document.hidden||contextLost)return;
+   if(!visible||document.hidden||contextLost||isDialogOpen())return;
    const dt=lastTime?Math.min((time-lastTime)*.001,.05):1/60;lastTime=time;
    if(!isDialogOpen()){elapsed+=dt;renderSculpture(dt);}
    if(!isReduced())frame=requestAnimationFrame(tick);
   }
   function sync(){
    cancelAnimationFrame(frame);frame=0;lastTime=0;
-   if(visible&&!document.hidden&&!contextLost){if(isReduced())renderOnce();else frame=requestAnimationFrame(tick);}
+   if(visible&&!document.hidden&&!contextLost&&!isDialogOpen()){if(isReduced())renderOnce();else frame=requestAnimationFrame(tick);}
   }
   createSculpture();
-  new ResizeObserver(resize).observe(art);
+  new ResizeObserver(()=>window.museumFrames.write(resize)).observe(art);
   new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;sync();},{rootMargin:'120px'}).observe(stage);
   document.addEventListener('visibilitychange',sync);
   addEventListener('lart-motion-change',sync);
+  addEventListener('lart-dialog-change',sync);
   addEventListener('pagehide',()=>{cancelAnimationFrame(frame);frame=0;lastTime=0;});
   addEventListener('pageshow',sync);
   canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();contextLost=true;section.classList.remove('has-sculpture');sync();});
@@ -220,7 +209,7 @@
    }
    $('.signature-instruction').textContent=pin?'SCROLL TO TRANSFORM / PAUSE TO DISCOVER':'SELECT A CHAPTER TO TRANSFORM THE STUDY';
    if(pin){
-    entry=gsap.fromTo(stage,{clipPath:'inset(18px 3%)'},{clipPath:'inset(0px 0%)',ease:'none',scrollTrigger:{trigger:stage,start:'top 90%',end:()=> 'top '+header()+'px',scrub:.8,invalidateOnRefresh:true}});
+    entry=gsap.fromTo(stage,{scale:.96,opacity:.65},{scale:1,opacity:1,ease:'none',scrollTrigger:{trigger:stage,start:'top 90%',end:()=> 'top '+header()+'px',scrub:.8,invalidateOnRefresh:true}});
     playhead.value=0;
     animation=gsap.to(playhead,{value:1,ease:'none',onUpdate:()=>update(playhead.value),scrollTrigger:{
      id:'french-signature',trigger:stage,start:()=> 'top '+header()+'px',
@@ -237,8 +226,8 @@
   update(0,false);resize();
   window.lartTheme?.subscribe(palette=>{
    if(!renderer)return;
-   const color=new THREE.Color(palette.accent);
-   sculpture.traverse(object=>{if(object.material?.color)object.material.color.copy(color);});
+   const color=new THREE.Color(palette.accent).convertLinearToSRGB();
+   shapeUniforms.uColor.value.set(color.r,color.g,color.b);
    if(!contextLost)renderer.render(scene,camera);
   });
 
